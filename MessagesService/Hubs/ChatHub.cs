@@ -12,19 +12,19 @@ public class ChatHub : Hub
     public async Task JoinRoom(string roomId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
-        await Clients.Group(roomId).SendAsync("UserJoined", Context.UserIdentifier);
+        await Clients.Group(roomId).SendAsync("UserJoined", Context.ConnectionId);
     }
 
     public async Task LeaveRoom(string roomId)
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
-        await Clients.Group(roomId).SendAsync("UserLeft", Context.UserIdentifier);
+        await Clients.Group(roomId).SendAsync("UserLeft", Context.ConnectionId);
     }
 
     public async Task SendMessage(string roomId, string text)
     {
-        var userId = Context.User?.FindFirst("userId")?.Value;
-        var name = Context.User?.FindFirst("displayName")?.Value;
+        var userId = Context.User?.FindFirst("userId")?.Value ?? "test-user";
+        var name = Context.User?.FindFirst("displayName")?.Value ?? "Test User";
 
         var msg = new ChatMessage
         {
@@ -43,6 +43,6 @@ public class ChatHub : Hub
     public async Task SendTypingStatus(string roomId, bool isTyping)
     {
         await Clients.OthersInGroup(roomId)
-            .SendAsync("UserTyping", Context.UserIdentifier, isTyping);
+            .SendAsync("UserTyping", Context.ConnectionId, isTyping);
     }
 }
