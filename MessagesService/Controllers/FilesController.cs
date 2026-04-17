@@ -4,6 +4,7 @@ using MongoDB.Driver;
 
 [ApiController]
 [Route("api/files")]
+[Authorize]
 public class FilesController : ControllerBase
 {
     private readonly MongoService _mongo;
@@ -16,10 +17,11 @@ public class FilesController : ControllerBase
     }
 
     [HttpPost("upload/{roomId}")]
+    [Authorize(Policy = "MemberOnly")]
     public async Task<IActionResult> Upload(string roomId, IFormFile file)
     {
-        var userId = User.FindFirst("userId")?.Value;
-        var name = User.FindFirst("displayName")?.Value;
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        var name = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
 
         var storedName = await _storage.SaveFileAsync(file);
 

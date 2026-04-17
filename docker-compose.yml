@@ -18,6 +18,20 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── MongoDB ─────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7-jammy
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # ── Identity Service ────────────────────────────────────────────────────────
   identity-service:
     build:
@@ -27,13 +41,29 @@ services:
     ports:
       - "5001:8080"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development   # enables Scalar UI at /scalar
-      # Override appsettings.json values — __ maps to nested JSON keys
+      ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=NexMeetIdentity;Username=postgres;Password=postgres"
       JwtSettings__Secret: "ba19f867320e9aad6564c13aab521fd9fa03d78b79088acf6c785662eff71275"
     depends_on:
       postgres:
-        condition: service_healthy   # wait for postgres to accept connections
+        condition: service_healthy
+
+  # ── Messages Service ────────────────────────────────────────────────────────
+  messages-service:
+    build:
+      context: ./MessagesService
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5002:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__MongoDB: "mongodb://mongo:27017"
+      JwtSettings__Secret: "ba19f867320e9aad6564c13aab521fd9fa03d78b79088acf6c785662eff71275"
+    depends_on:
+      mongo:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  mongo_data:

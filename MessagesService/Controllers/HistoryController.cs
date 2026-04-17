@@ -3,6 +3,7 @@ using MongoDB.Driver;
 
 [ApiController]
 [Route("api/history")]
+[Authorize(Policy = "MemberOnly")]
 public class HistoryController : ControllerBase
 {
     private readonly MongoService _mongo;

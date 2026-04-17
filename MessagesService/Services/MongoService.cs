@@ -6,7 +6,9 @@ public class MongoService
 
     public MongoService(IConfiguration config)
     {
-        var client = new MongoClient("mongodb://localhost:27017");
+        var connectionString = config.GetConnectionString("MongoDB")
+            ?? throw new InvalidOperationException("ConnectionStrings:MongoDB is not configured.");
+        var client = new MongoClient(connectionString);
         _db = client.GetDatabase("messages_db");
     }
 

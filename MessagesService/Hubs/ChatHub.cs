@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
 
+[Authorize]
 public class ChatHub : Hub
 {
     private readonly MongoService _mongo;
@@ -11,6 +13,16 @@ public class ChatHub : Hub
 
     public async Task JoinRoom(string roomId)
     {
+        // Guests carry a meeting_code claim scoped to one room.
+        // Verify it matches before allowing them into the SignalR group.
+        var role = Context.User?.FindFirst(ClaimTypes.Role)?.Value;
+        if (role == "Guest")
+        {
+            var meetingCode = Context.User?.FindFirst("meeting_code")?.Value;
+            if (meetingCode != roomId)
+                throw new HubException("Access denied: your guest token is not valid for this room.");
+        }
+
         await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
         await Clients.Group(roomId).SendAsync("UserJoined", Context.ConnectionId);
     }
@@ -23,8 +35,8 @@ public class ChatHub : Hub
 
     public async Task SendMessage(string roomId, string text)
     {
-        var userId = Context.User?.FindFirst("userId")?.Value ?? "test-user";
-        var name = Context.User?.FindFirst("displayName")?.Value ?? "Test User";
+        var userId = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var name = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "Unknown";
 
         var msg = new ChatMessage
         {

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-// using MessagesService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,31 +18,47 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
             .AllowCredentials()
             .WithOrigins("http://localhost:3000"));
-            
 });
+
+var jwtSecret = builder.Configuration["JwtSettings:Secret"]
+    ?? throw new InvalidOperationException("JwtSettings:Secret is not configured.");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        // SignalR: browsers can't set Authorization headers on WebSocket connections,
+        // so the client appends ?access_token=<jwt> to the hub URL.
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
             {
-                // Read JWT from cookie
-                context.Token = context.Request.Cookies["jwt"];
+                var token = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/chat-hub"))
+                    context.Token = token;
+
                 return Task.CompletedTask;
             }
         };
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes("YOUR_SECRET_KEY"))
+            ValidIssuer = "NexMeet.IdentityService",
+            ValidAudience = "NexMeet.Clients",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
         };
     });
+
+builder.Services.AddAuthorization(options =>
+{
+    // Only registered users. Guests (role=Guest) are rejected with 403.
+    options.AddPolicy("MemberOnly", policy => policy.RequireRole("Member"));
+});
 
 var app = builder.Build();
 
