@@ -1,0 +1,39 @@
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: NexMeetIdentity
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Identity Service ────────────────────────────────────────────────────────
+  identity-service:
+    build:
+      context: ./IdentityService
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5001:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development   # enables Scalar UI at /scalar
+      # Override appsettings.json values — __ maps to nested JSON keys
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=NexMeetIdentity;Username=postgres;Password=postgres"
+      JwtSettings__Secret: "ba19f867320e9aad6564c13aab521fd9fa03d78b79088acf6c785662eff71275"
+    depends_on:
+      postgres:
+        condition: service_healthy   # wait for postgres to accept connections
+
+volumes:
+  postgres_data:

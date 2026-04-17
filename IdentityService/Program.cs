@@ -45,6 +45,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    // Allow cookies to be set on plain HTTP (needed for localhost dev / Docker without TLS)
+    options.MinimumSameSitePolicy = SameSiteMode.Unspecified;
+    options.OnAppendCookie = ctx => ctx.CookieOptions.Secure = ctx.Context.Request.IsHttps;
+});
+
 // DI Registration
 builder.Services.AddControllers();
 
@@ -62,13 +69,14 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
 // AutoMapper & FluentValidation
-builder.Services.AddAutoMapper(typeof(Program).Assembly);
+builder.Services.AddAutoMapper(cfg => cfg.AddMaps(typeof(Program).Assembly));
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 var app = builder.Build();
 
 // Middleware Pipeline
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseCookiePolicy();
 
 if (app.Environment.IsDevelopment())
 {
@@ -91,8 +99,18 @@ app.MapControllers();
 // Auto-migrate database on startup (useful for Docker/Dev, consider specialized tools for Prod)
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    var services = scope.ServiceProvider;
+    try
+    {
+        var db = services.GetRequiredService<AppDbContext>();
+        db.Database.Migrate();
+        Log.Information("Database migration applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        Log.Fatal(ex, "An error occurred while migrating the database.");
+        throw; 
+    }
 }
 
 app.Run();

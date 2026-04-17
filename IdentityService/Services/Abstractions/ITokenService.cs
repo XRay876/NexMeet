@@ -4,6 +4,7 @@ namespace IdentityService.Services.Abstractions;
 
 public interface ITokenService
 {
-    string GenerateToken(User user);
-    string GenerateGuestToken(string guestName);
+    string GenerateAccessToken(User user);
+    string GenerateGuestToken(string guestName, string meetingCode);
+    string GenerateRefreshTokenValue();
 }

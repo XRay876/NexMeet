@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace IdentityService.Services;
@@ -13,7 +14,7 @@ public class TokenService(IOptions<JwtSettings> jwtSettings) : ITokenService
 {
     private readonly JwtSettings _settings = jwtSettings.Value;
 
-    public string GenerateToken(User user)
+    public string GenerateAccessToken(User user)
     {
         var claims = new List<Claim>
         {
@@ -23,23 +24,30 @@ public class TokenService(IOptions<JwtSettings> jwtSettings) : ITokenService
             new("role", "Member")
         };
 
-        return CreateToken(claims);
+        return CreateJwt(claims, TimeSpan.FromMinutes(_settings.AccessTokenExpiryMinutes));
     }
 
-    public string GenerateGuestToken(string guestName)
+    public string GenerateGuestToken(string guestName, string meetingCode)
     {
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, Guid.NewGuid().ToString()),
             new(JwtRegisteredClaimNames.Name, guestName),
-            new("role", "Guest")
+            new("role", "Guest"),
+            new("meeting_code", meetingCode)   // MeetingService validates this against the requested room
         };
 
-        // Guest tokens might have a shorter lifespan, but we use default here
-        return CreateToken(claims);
+        return CreateJwt(claims, TimeSpan.FromMinutes(_settings.GuestTokenExpiryMinutes));
     }
 
-    private string CreateToken(IEnumerable<Claim> claims)
+    public string GenerateRefreshTokenValue()
+    {
+        var bytes = new byte[64];
+        RandomNumberGenerator.Fill(bytes);
+        return Convert.ToBase64String(bytes);
+    }
+
+    private string CreateJwt(IEnumerable<Claim> claims, TimeSpan expiry)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -48,7 +56,7 @@ public class TokenService(IOptions<JwtSettings> jwtSettings) : ITokenService
             issuer: _settings.Issuer,
             audience: _settings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_settings.ExpiryMinutes),
+            expires: DateTime.UtcNow.Add(expiry),
             signingCredentials: creds
         );
 

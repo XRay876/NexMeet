@@ -2,6 +2,8 @@ namespace IdentityService.DTO.Response;
 
 public record AuthResponse(
     Guid UserId,
-    string Token,
+    string AccessToken,
     string DisplayName,
-    string ThemePreference);
+    string? AvatarUrl,
+    string ThemePreference,
+    DateTime CreatedAt);

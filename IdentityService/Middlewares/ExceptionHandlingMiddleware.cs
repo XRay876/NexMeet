@@ -3,7 +3,10 @@ using System.Text.Json;
 
 namespace IdentityService.Middlewares;
 
-public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+public class ExceptionHandlingMiddleware(
+    RequestDelegate next,
+    ILogger<ExceptionHandlingMiddleware> logger,
+    IHostEnvironment env)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -13,12 +16,12 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "An unhandled exception occurred during the request.");
+            logger.LogError(ex, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);
             await HandleExceptionAsync(context, ex);
         }
     }
 
-    private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         context.Response.ContentType = "application/json";
 
@@ -32,7 +35,11 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
 
         context.Response.StatusCode = statusCode;
 
-        var result = JsonSerializer.Serialize(new { error = message });
-        return context.Response.WriteAsync(result);
+        // In development include the real exception so it's visible in Postman without needing docker logs
+        object body = env.IsDevelopment() && statusCode == (int)HttpStatusCode.InternalServerError
+            ? new { error = message, detail = exception.Message, type = exception.GetType().Name }
+            : new { error = message };
+
+        return context.Response.WriteAsync(JsonSerializer.Serialize(body));
     }
 }
