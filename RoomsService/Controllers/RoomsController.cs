@@ -86,7 +86,7 @@ public class RoomsController(
     {
         var ownerId = GetCurrentUserId();
         await roomService.CloseRoomAsync(id, ownerId, cancellationToken);
-        return Ok(ApiResponse<object>.Ok(null, "Room closed successfully."));
+        return Ok(ApiResponse<object?>.Ok(null, "Room closed successfully."));
     }
 
     private Guid GetCurrentUserId()

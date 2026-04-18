@@ -39,6 +39,6 @@ public class FilesController(IFileService fileService) : ControllerBase
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         await fileService.DeleteFileAsync(fileId, userId, cancellationToken);
-        return Ok(ApiResponse<object>.Ok(null, "File deleted successfully."));
+        return Ok(ApiResponse<object?>.Ok(null, "File deleted successfully."));
     }
 }

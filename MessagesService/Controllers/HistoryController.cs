@@ -39,6 +39,6 @@ public class HistoryController(
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         await messageService.DeleteMessageAsync(messageId, userId, cancellationToken);
-        return Ok(ApiResponse<object>.Ok(null, "Message deleted successfully."));
+        return Ok(ApiResponse<object?>.Ok(null, "Message deleted successfully."));
     }
 }

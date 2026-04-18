@@ -34,6 +34,6 @@ public class SignalingController(
 
         logger.LogWarning("Connection issue reported for room {RoomCode}: {Description}", request.RoomCode, request.Description);
 
-        return Ok(ApiResponse<object>.Ok(null, "Issue reported successfully."));
+        return Ok(ApiResponse<object?>.Ok(null, "Issue reported successfully."));
     }
 }
