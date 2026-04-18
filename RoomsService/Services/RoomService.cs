@@ -108,4 +108,18 @@ public class RoomService(
 
         return history;
     }
+
+    public async Task ClearHistoryAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var participantRecords = await context.RoomParticipants
+            .Where(p => p.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        if (participantRecords.Count > 0)
+        {
+            context.RoomParticipants.RemoveRange(participantRecords);
+            await context.SaveChangesAsync(cancellationToken);
+            logger.LogInformation("Cleared room history for user {UserId}. Deleted {Count} participant records.", userId, participantRecords.Count);
+        }
+    }
 }

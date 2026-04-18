@@ -10,4 +10,5 @@ public interface IRoomService
     Task JoinRoomAsync(string code, Guid? userId, string? guestName, CancellationToken cancellationToken = default);
     Task CloseRoomAsync(Guid roomId, Guid ownerId, CancellationToken cancellationToken = default);
     Task<IEnumerable<RoomHistoryResponse>> GetMyHistoryAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task ClearHistoryAsync(Guid userId, CancellationToken cancellationToken = default);
 }
