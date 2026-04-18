@@ -49,7 +49,7 @@ function App() {
   return (
     <div className="container">
       <header>
-        <h1>NexMeet Frontend</h1>
+        <h1>NexMeet</h1>
         <p>Role-aware room chat, files, history, and WebRTC calling.</p>
         {token ? (
           <div className="session">
@@ -102,6 +102,9 @@ function AuthPanel({
   onAuth: (token: string) => void;
   onError: (e: string) => void;
 }) {
+  const [activeTab, setActiveTab] = useState<"login" | "register" | "guest">(
+    "login",
+  );
   const [guestName, setGuestName] = useState("");
   const [meetingCode, setMeetingCode] = useState("");
 
@@ -141,93 +144,164 @@ function AuthPanel({
   };
 
   return (
-    <section className="grid-2">
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          try {
-            await login(new FormData(e.currentTarget));
-          } catch (error) {
-            onError((error as Error).message);
-          }
-        }}
-      >
-        <h3>Member Login</h3>
-        <input required name="identifier" placeholder="Username or email" />
-        <input
-          required
-          type="password"
-          name="password"
-          placeholder="Password"
-          autoComplete="current-password"
-        />
-        <button type="submit">Login</button>
-      </form>
-
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          try {
-            await register(new FormData(e.currentTarget));
-          } catch (error) {
-            onError((error as Error).message);
-          }
-        }}
-      >
-        <h3>Member Register</h3>
-        <input
-          required
-          name="username"
-          placeholder="Username"
-          autoComplete="username"
-        />
-        <input
-          required
-          name="email"
-          type="email"
-          placeholder="Email"
-          autoComplete="email"
-        />
-        <input
-          required
-          name="displayName"
-          placeholder="Display name"
-          autoComplete="name"
-        />
-        <input
-          required
-          type="password"
-          name="password"
-          placeholder="Password"
-          autoComplete="new-password"
-        />
-        <button type="submit">Register</button>
-      </form>
-
-      <div className="card">
-        <h3>Guest Access</h3>
-        <input
-          value={guestName}
-          onChange={(e) => setGuestName(e.target.value)}
-          placeholder="Guest name"
-        />
-        <input
-          value={meetingCode}
-          onChange={(e) => setMeetingCode(e.target.value)}
-          placeholder="Meeting code (abc-defg-hij)"
-        />
+    <section style={{ maxWidth: "500px", margin: "0 auto" }}>
+      <div className="tabs">
         <button
-          onClick={async () => {
+          className={`tab-button ${activeTab === "login" ? "active" : ""}`}
+          onClick={() => setActiveTab("login")}
+        >
+          Login
+        </button>
+        <button
+          className={`tab-button ${activeTab === "register" ? "active" : ""}`}
+          onClick={() => setActiveTab("register")}
+        >
+          Register
+        </button>
+        <button
+          className={`tab-button ${activeTab === "guest" ? "active" : ""}`}
+          onClick={() => setActiveTab("guest")}
+        >
+          Guest
+        </button>
+      </div>
+
+      {activeTab === "login" && (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
             try {
-              await guestJoin();
+              await login(new FormData(e.currentTarget));
             } catch (error) {
               onError((error as Error).message);
             }
           }}
         >
-          Get Guest Token
-        </button>
-      </div>
+          <h3>Sign In</h3>
+          <input
+            required
+            name="identifier"
+            placeholder="Username or email"
+            autoFocus
+          />
+          <input
+            required
+            type="password"
+            name="password"
+            placeholder="Password"
+            autoComplete="current-password"
+          />
+          <button type="submit">Sign In</button>
+          <p style={{ textAlign: "center", color: "var(--text-muted)" }}>
+            Don't have an account?{" "}
+            <button
+              type="button"
+              className="secondary"
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--primary-light)",
+                padding: "0",
+                cursor: "pointer",
+              }}
+              onClick={() => setActiveTab("register")}
+            >
+              Register
+            </button>
+          </p>
+        </form>
+      )}
+
+      {activeTab === "register" && (
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              await register(new FormData(e.currentTarget));
+            } catch (error) {
+              onError((error as Error).message);
+            }
+          }}
+        >
+          <h3>Create Account</h3>
+          <input
+            required
+            name="username"
+            placeholder="Username"
+            autoComplete="username"
+            autoFocus
+          />
+          <input
+            required
+            name="email"
+            type="email"
+            placeholder="Email"
+            autoComplete="email"
+          />
+          <input
+            required
+            name="displayName"
+            placeholder="Display name"
+            autoComplete="name"
+          />
+          <input
+            required
+            type="password"
+            name="password"
+            placeholder="Password"
+            autoComplete="new-password"
+          />
+          <button type="submit">Create Account</button>
+          <p style={{ textAlign: "center", color: "var(--text-muted)" }}>
+            Already have an account?{" "}
+            <button
+              type="button"
+              className="secondary"
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--primary-light)",
+                padding: "0",
+                cursor: "pointer",
+              }}
+              onClick={() => setActiveTab("login")}
+            >
+              Sign In
+            </button>
+          </p>
+        </form>
+      )}
+
+      {activeTab === "guest" && (
+        <div className="card">
+          <h3>Join as Guest</h3>
+          <p style={{ color: "var(--text-muted)", margin: "0 0 1rem 0" }}>
+            Enter your name and the meeting code to join a room
+          </p>
+          <input
+            value={guestName}
+            onChange={(e) => setGuestName(e.target.value)}
+            placeholder="Your name"
+            autoFocus
+          />
+          <input
+            value={meetingCode}
+            onChange={(e) => setMeetingCode(e.target.value)}
+            placeholder="Meeting code (e.g., abc-defg-hij)"
+          />
+          <button
+            onClick={async () => {
+              try {
+                await guestJoin();
+              } catch (error) {
+                onError((error as Error).message);
+              }
+            }}
+          >
+            Join Meeting
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -250,6 +324,7 @@ function Lobby({
   const [myHistory, setMyHistory] = useState<
     Array<{ code: string; name: string; joinedAt: string; wasOwner: boolean }>
   >([]);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     if (role !== "Member") return;
@@ -267,68 +342,151 @@ function Lobby({
     onEnterRoom(roomData);
   }
 
+  async function clearHistory() {
+    if (
+      !confirm(
+        "Are you sure you want to clear your room history? This cannot be undone.",
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setIsClearing(true);
+      await apiRequest("/api/rooms/clear-history", { method: "DELETE" });
+      setMyHistory([]);
+    } catch (error) {
+      onError((error as Error).message);
+    } finally {
+      setIsClearing(false);
+    }
+  }
+
   return (
     <section>
-      <h2>Lobby</h2>
+      <h2>Welcome to NexMeet</h2>
+      <p style={{ color: "var(--text-muted)", marginBottom: "2rem" }}>
+        {role === "Member"
+          ? "Create a new room or join an existing one"
+          : "Join a room using the code below"}
+      </p>
 
-      {role === "Member" && (
+      <div className="grid-2">
+        {role === "Member" && (
+          <div className="card">
+            <h3>📝 Create Room</h3>
+            <p style={{ color: "var(--text-muted)", margin: "0 0 1rem 0" }}>
+              Start a new meeting and invite others
+            </p>
+            <input
+              value={roomName}
+              onChange={(e) => setRoomName(e.target.value)}
+              placeholder="Give your room a name"
+            />
+            <button
+              onClick={async () => {
+                try {
+                  const room = await apiRequest<Room>("/api/rooms", {
+                    method: "POST",
+                    body: JSON.stringify({ name: roomName }),
+                  });
+                  // Join the room to record in history
+                  await apiRequest(`/api/rooms/${room.code}/join`, {
+                    method: "POST",
+                  });
+                  onEnterRoom(room);
+                } catch (error) {
+                  onError((error as Error).message);
+                }
+              }}
+            >
+              Create & Enter
+            </button>
+          </div>
+        )}
+
         <div className="card">
-          <h3>Create room (Member only)</h3>
+          <h3>🔗 Join Room</h3>
+          <p style={{ color: "var(--text-muted)", margin: "0 0 1rem 0" }}>
+            Enter a room code to join an existing meeting
+          </p>
           <input
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-            placeholder="Room name"
+            value={roomCode}
+            onChange={(e) => setRoomCode(e.target.value)}
+            placeholder="Enter room code"
           />
           <button
             onClick={async () => {
               try {
-                const room = await apiRequest<Room>("/api/rooms", {
-                  method: "POST",
-                  body: JSON.stringify({ name: roomName }),
-                });
-                onEnterRoom(room);
+                await joinByCode(roomCode);
               } catch (error) {
                 onError((error as Error).message);
               }
             }}
           >
-            Create & Enter
+            Join Meeting
           </button>
         </div>
-      )}
-
-      <div className="card">
-        <h3>Join room</h3>
-        <input
-          value={roomCode}
-          onChange={(e) => setRoomCode(e.target.value)}
-          placeholder="Room code"
-        />
-        <button
-          onClick={async () => {
-            try {
-              await joinByCode(roomCode);
-            } catch (error) {
-              onError((error as Error).message);
-            }
-          }}
-        >
-          Join
-        </button>
       </div>
 
-      {role === "Member" && (
-        <div className="card">
-          <h3>My room history</h3>
-          {myHistory.map((item) => (
-            <div key={`${item.code}-${item.joinedAt}`} className="row">
-              <span>
-                {item.name} ({item.code})
-              </span>
-              <button onClick={() => joinByCode(item.code)}>Rejoin</button>
+      {role === "Member" && myHistory.length > 0 && (
+        <div className="card" style={{ marginTop: "2rem" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "1rem",
+            }}
+          >
+            <div>
+              <h3 style={{ margin: "0 0 0.5rem 0" }}>📋 Recent Rooms</h3>
+              <p style={{ color: "var(--text-muted)", margin: "0" }}>
+                Quickly rejoin your recent meetings
+              </p>
             </div>
-          ))}
-          {!myHistory.length && <small>No history yet.</small>}
+            <button
+              className="secondary"
+              onClick={clearHistory}
+              disabled={isClearing}
+              style={{
+                minWidth: "140px",
+                padding: "0.75rem 1rem",
+              }}
+            >
+              {isClearing ? "Clearing..." : "🗑️ Clear History"}
+            </button>
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gap: "0.75rem",
+            }}
+          >
+            {myHistory.map((item) => (
+              <div key={`${item.code}-${item.joinedAt}`} className="row">
+                <div>
+                  <strong>{item.name}</strong>
+                  <p
+                    style={{
+                      fontSize: "0.85rem",
+                      color: "var(--text-muted)",
+                      margin: "0.25rem 0 0 0",
+                    }}
+                  >
+                    {item.code}
+                    {item.wasOwner && " • You owned this room"}
+                  </p>
+                </div>
+                <button
+                  className="secondary"
+                  onClick={() => joinByCode(item.code)}
+                >
+                  Rejoin
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </section>
@@ -358,6 +516,10 @@ function RoomPage({
     useState<signalR.HubConnection | null>(null);
   const [micEnabled, setMicEnabled] = useState(true);
   const [cameraEnabled, setCameraEnabled] = useState(true);
+  const currentUserDisplayName = getDisplayName(token);
+  const [peerDisplayNames, setPeerDisplayNames] = useState<Map<string, string>>(
+    new Map(),
+  );
 
   const typingTimeoutRef = useRef<number | null>(null);
   const remoteTypingTimeoutRef = useRef<number | null>(null);
@@ -405,6 +567,14 @@ function RoomPage({
           if (mounted) {
             setMessages(history.messages);
             setFiles(history.files);
+            // Build peer display names from historical messages
+            const displayNameMap = new Map<string, string>();
+            history.messages.forEach((msg) => {
+              if (msg.senderDisplayName) {
+                displayNameMap.set(msg.senderUserId, msg.senderDisplayName);
+              }
+            });
+            setPeerDisplayNames(displayNameMap);
           }
         } else {
           const roomFiles = await apiRequest<SharedFile[]>(
@@ -428,6 +598,17 @@ function RoomPage({
       chatHub.on("ReceiveMessage", (message: ChatMessage) => {
         if (!mounted) return;
         setMessages((prev) => [...prev, message]);
+        // Track display names from messages to match with video peers
+        const claims = getClaims(token);
+        const currentUserId = claims?.sub || claims?.nameid;
+        if (message.senderUserId !== currentUserId) {
+          setPeerDisplayNames((prev) => {
+            const updated = new Map(prev);
+            // Store the display name for this user ID
+            updated.set(message.senderUserId, message.senderDisplayName);
+            return updated;
+          });
+        }
       });
 
       chatHub.on("UserTyping", (displayName: string, isTyping: boolean) => {
@@ -631,137 +812,367 @@ function RoomPage({
 
   return (
     <section>
-      <h2>Room: {room.name}</h2>
-      <p>
-        Room Code: <strong>{room.code}</strong> | Room Id:{" "}
-        <code>{room.id}</code>
-      </p>
-      <button onClick={onLeave}>Back to lobby</button>
-
-      <div className="grid-2">
-        <VideoPanel
-          videos={videos}
-          micEnabled={micEnabled}
-          cameraEnabled={cameraEnabled}
-          onToggleMicrophone={toggleMicrophone}
-          onToggleCamera={toggleCamera}
-        />
-
-        <div className="card">
-          <h3>Chat</h3>
-          <div className="messages">
-            {messages.map((m) => (
-              <div key={m.id}>
-                <strong>{m.senderDisplayName || "Unknown"}:</strong> {m.text}
-              </div>
-            ))}
-          </div>
-
-          <small>{typing}</small>
-
-          <input
-            value={text}
-            onChange={(e) => {
-              const value = e.target.value;
-              setText(value);
-
-              chatConnection
-                ?.invoke("SendTypingStatus", room.code, value.length > 0)
-                .catch(() => null);
-
-              if (typingTimeoutRef.current) {
-                window.clearTimeout(typingTimeoutRef.current);
-              }
-
-              typingTimeoutRef.current = window.setTimeout(() => {
-                chatConnection
-                  ?.invoke("SendTypingStatus", room.code, false)
-                  .catch(() => null);
-              }, 1000);
-            }}
-            placeholder="Type message"
-          />
-
-          <button
-            onClick={async () => {
-              if (!text.trim()) return;
-
-              await chatConnection?.invoke("SendMessage", room.code, text);
-              await chatConnection
-                ?.invoke("SendTypingStatus", room.code, false)
-                .catch(() => null);
-
-              if (typingTimeoutRef.current) {
-                window.clearTimeout(typingTimeoutRef.current);
-              }
-
-              setText("");
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1.5rem",
+          paddingBottom: "1rem",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <div>
+          <h2 style={{ margin: "0 0 0.5rem 0" }}>🎥 {room.name}</h2>
+          <p
+            style={{
+              color: "var(--text-muted)",
+              margin: "0",
+              fontSize: "0.9rem",
             }}
           >
-            Send
-          </button>
+            Code:{" "}
+            <code
+              style={{
+                background: "var(--bg-tertiary)",
+                padding: "0.25rem 0.5rem",
+                borderRadius: "0.4rem",
+              }}
+            >
+              {room.code}
+            </code>
+          </p>
         </div>
+        <button className="secondary" onClick={onLeave}>
+          ← Leave Room
+        </button>
       </div>
 
-      <div className="card">
-        <h3>Files</h3>
+      {/* Video Panel */}
+      <VideoPanel
+        videos={videos}
+        micEnabled={micEnabled}
+        cameraEnabled={cameraEnabled}
+        onToggleMicrophone={toggleMicrophone}
+        onToggleCamera={toggleCamera}
+        peerDisplayNames={peerDisplayNames}
+      />
 
-        {role === "Member" && (
-          <input
-            type="file"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-
-              const formData = new FormData();
-              formData.append("file", file);
-
-              try {
-                const uploaded = await apiRequest<SharedFile>(
-                  `/api/files/upload/${room.id}`,
-                  { method: "POST", body: formData },
-                );
-                setFiles((prev) => [...prev, uploaded]);
-              } catch (error) {
-                onError((error as Error).message);
-              }
-            }}
-          />
-        )}
-
-        {files.map((f) => (
-          <div className="row" key={f.id}>
-            <span>
-              {f.originalFileName} ({Math.round(f.size / 1024)} KB)
-            </span>
-            <div>
-              <a
-                href={`${apiBaseUrl()}/api/files/download/${f.id}`}
-                target="_blank"
-                rel="noreferrer"
+      {/* Main Content: Chat and Files */}
+      <div className="grid-2" style={{ marginTop: "2rem" }}>
+        {/* Chat Section */}
+        <div
+          className="card"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
+          <h3 style={{ marginTop: "0" }}>💬 Chat</h3>
+          <div className="messages" style={{ flex: 1, minHeight: "300px" }}>
+            {messages.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--text-muted)",
+                  textAlign: "center",
+                  padding: "2rem 1rem",
+                  margin: "0",
+                }}
               >
-                Download
-              </a>
+                No messages yet. Start the conversation!
+              </p>
+            ) : (
+              messages.map((m) => {
+                const isCurrentUser =
+                  m.senderDisplayName === currentUserDisplayName;
+                return (
+                  <div
+                    key={m.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: isCurrentUser ? "flex-end" : "flex-start",
+                      marginBottom: "0.75rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        maxWidth: "70%",
+                        padding: "0.75rem 1rem",
+                        borderRadius: "0.75rem",
+                        background: isCurrentUser
+                          ? "var(--primary)"
+                          : "var(--bg-tertiary)",
+                        color: isCurrentUser ? "white" : "var(--text-primary)",
+                      }}
+                    >
+                      {!isCurrentUser && (
+                        <strong
+                          style={{
+                            color: isCurrentUser
+                              ? "white"
+                              : "var(--primary-light)",
+                            display: "block",
+                            marginBottom: "0.25rem",
+                          }}
+                        >
+                          {m.senderDisplayName || "Unknown"}
+                        </strong>
+                      )}
+                      <p
+                        style={{
+                          margin: "0",
+                          color: isCurrentUser
+                            ? "white"
+                            : "var(--text-primary)",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {m.text}
+                      </p>
+                      <small
+                        style={{
+                          color: isCurrentUser
+                            ? "rgba(255, 255, 255, 0.7)"
+                            : "var(--text-muted)",
+                          fontSize: "0.75rem",
+                          marginTop: "0.25rem",
+                          display: "block",
+                        }}
+                      >
+                        {new Date(m.createdAt).toLocaleTimeString()}
+                      </small>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            {typing && (
+              <p
+                style={{
+                  color: "var(--text-muted)",
+                  fontStyle: "italic",
+                  margin: "0.5rem 0 0 0",
+                }}
+              >
+                ✏️ {typing}
+              </p>
+            )}
+          </div>
 
-              {role === "Member" && (
-                <button
-                  onClick={async () => {
-                    try {
-                      await apiRequest(`/api/files/delete/${f.id}`, {
-                        method: "DELETE",
-                      });
-                      setFiles((prev) => prev.filter((x) => x.id !== f.id));
-                    } catch (error) {
-                      onError((error as Error).message);
-                    }
+          <div style={{ display: "flex", gap: "0.75rem", marginTop: "1rem" }}>
+            <input
+              value={text}
+              onChange={(e) => {
+                const value = e.target.value;
+                setText(value);
+
+                chatConnection
+                  ?.invoke("SendTypingStatus", room.code, value.length > 0)
+                  .catch(() => null);
+
+                if (typingTimeoutRef.current) {
+                  window.clearTimeout(typingTimeoutRef.current);
+                }
+
+                typingTimeoutRef.current = window.setTimeout(() => {
+                  chatConnection
+                    ?.invoke("SendTypingStatus", room.code, false)
+                    .catch(() => null);
+                }, 1000);
+              }}
+              placeholder="Type a message..."
+              style={{ flex: 1 }}
+            />
+            <button
+              onClick={async () => {
+                if (!text.trim()) return;
+
+                await chatConnection?.invoke("SendMessage", room.code, text);
+                await chatConnection
+                  ?.invoke("SendTypingStatus", room.code, false)
+                  .catch(() => null);
+
+                if (typingTimeoutRef.current) {
+                  window.clearTimeout(typingTimeoutRef.current);
+                }
+
+                setText("");
+              }}
+              style={{ minWidth: "100px" }}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+
+        {/* Files Section */}
+        <div
+          className="card"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
+          <h3 style={{ marginTop: "0" }}>📁 Files</h3>
+          {role === "Member" && (
+            <label
+              style={{
+                display: "block",
+                padding: "1rem",
+                border: "2px dashed var(--border)",
+                borderRadius: "0.75rem",
+                textAlign: "center",
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+                marginBottom: "1rem",
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.currentTarget.style.borderColor = "var(--primary)";
+                e.currentTarget.style.backgroundColor =
+                  "rgba(59, 130, 246, 0.1)";
+              }}
+              onDragLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+            >
+              <input
+                type="file"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+
+                  const formData = new FormData();
+                  formData.append("file", file);
+
+                  try {
+                    const uploaded = await apiRequest<SharedFile>(
+                      `/api/files/upload/${room.id}`,
+                      { method: "POST", body: formData },
+                    );
+                    setFiles((prev) => [...prev, uploaded]);
+                  } catch (error) {
+                    onError((error as Error).message);
+                  }
+                }}
+                style={{ display: "none" }}
+                accept="*/*"
+              />
+              <div style={{ pointerEvents: "none" }}>
+                <p
+                  style={{
+                    margin: "0 0 0.5rem 0",
+                    color: "var(--text-primary)",
+                    fontWeight: "600",
                   }}
                 >
-                  Delete
-                </button>
-              )}
-            </div>
+                  📤 Upload File
+                </p>
+                <p
+                  style={{
+                    margin: "0",
+                    color: "var(--text-muted)",
+                    fontSize: "0.9rem",
+                  }}
+                >
+                  Drag and drop or click to select
+                </p>
+              </div>
+            </label>
+          )}
+
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.75rem",
+            }}
+          >
+            {files.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--text-muted)",
+                  textAlign: "center",
+                  padding: "2rem 1rem",
+                  margin: "0",
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                No files shared yet
+              </p>
+            ) : (
+              files.map((f) => (
+                <div className="row" key={f.id}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: "0", fontWeight: "500" }}>
+                      📄 {f.originalFileName}
+                    </p>
+                    <p
+                      style={{
+                        margin: "0.25rem 0 0 0",
+                        fontSize: "0.85rem",
+                        color: "var(--text-muted)",
+                      }}
+                    >
+                      {Math.round(f.size / 1024)} KB
+                    </p>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <a
+                      href={`${apiBaseUrl()}/api/files/download/${f.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        padding: "0.5rem 1rem",
+                        background: "var(--primary)",
+                        color: "white",
+                        borderRadius: "0.5rem",
+                        textDecoration: "none",
+                        fontSize: "0.9rem",
+                        fontWeight: "500",
+                        transition: "all 0.3s ease",
+                        cursor: "pointer",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.background =
+                          "var(--primary-dark)";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.background = "var(--primary)";
+                      }}
+                    >
+                      ⬇️ Download
+                    </a>
+                    {role === "Member" && (
+                      <button
+                        className="secondary"
+                        style={{ padding: "0.5rem 1rem" }}
+                        onClick={async () => {
+                          try {
+                            await apiRequest(`/api/files/delete/${f.id}`, {
+                              method: "DELETE",
+                            });
+                            setFiles((prev) =>
+                              prev.filter((x) => x.id !== f.id),
+                            );
+                          } catch (error) {
+                            onError((error as Error).message);
+                          }
+                        }}
+                      >
+                        🗑️ Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-        ))}
+        </div>
       </div>
     </section>
   );
@@ -773,31 +1184,77 @@ const VideoPanel = memo(function VideoPanel({
   cameraEnabled,
   onToggleMicrophone,
   onToggleCamera,
+  peerDisplayNames,
 }: {
   videos: Array<{ id: string; stream: MediaStream }>;
   micEnabled: boolean;
   cameraEnabled: boolean;
   onToggleMicrophone: () => void;
   onToggleCamera: () => void;
+  peerDisplayNames: Map<string, string>;
 }) {
   return (
-    <div className="card">
-      <h3>WebRTC Call</h3>
+    <div className="card" style={{ marginBottom: "0" }}>
+      <h3 style={{ marginTop: "0" }}>🎥 Video Conference</h3>
       <div className="videos">
-        {videos.map((video) => (
-          <Video
-            key={video.id}
-            stream={video.stream}
-            muted={video.id === "self"}
-          />
-        ))}
+        {videos.length === 0 ? (
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              height: "300px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "var(--bg-tertiary)",
+              borderRadius: "1rem",
+              color: "var(--text-muted)",
+            }}
+          >
+            Loading camera...
+          </div>
+        ) : (
+          videos.map((video) => (
+            <Video
+              key={video.id}
+              stream={video.stream}
+              muted={video.id === "self"}
+              label={
+                video.id === "self"
+                  ? "You"
+                  : peerDisplayNames.get(video.id) || "Participant"
+              }
+            />
+          ))
+        )}
       </div>
-      <div style={{ marginTop: "10px", display: "flex", gap: "10px" }}>
-        <button onClick={onToggleMicrophone}>
+      <div className="controls">
+        <button
+          onClick={onToggleMicrophone}
+          style={{
+            background: micEnabled ? "var(--success)" : "var(--danger)",
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+        >
           {micEnabled ? "🎤 Mute" : "🔇 Unmute"}
         </button>
-        <button onClick={onToggleCamera}>
-          {cameraEnabled ? "📹 Stop Camera" : "📷 Start Camera"}
+        <button
+          onClick={onToggleCamera}
+          style={{
+            background: cameraEnabled ? "var(--success)" : "var(--danger)",
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = "scale(1.05)";
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+        >
+          {cameraEnabled ? "📹 Camera On" : "📷 Camera Off"}
         </button>
       </div>
     </div>
@@ -807,9 +1264,11 @@ const VideoPanel = memo(function VideoPanel({
 const Video = memo(function Video({
   stream,
   muted,
+  label,
 }: {
   stream: MediaStream;
   muted: boolean;
+  label?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -819,7 +1278,28 @@ const Video = memo(function Video({
     }
   }, [stream]);
 
-  return <video ref={videoRef} autoPlay playsInline muted={muted} />;
+  return (
+    <div style={{ position: "relative" }}>
+      <video ref={videoRef} autoPlay playsInline muted={muted} />
+      {label && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "1rem",
+            left: "1rem",
+            background: "rgba(0, 0, 0, 0.7)",
+            color: "white",
+            padding: "0.5rem 1rem",
+            borderRadius: "0.5rem",
+            fontSize: "0.9rem",
+            fontWeight: "600",
+          }}
+        >
+          {label}
+        </div>
+      )}
+    </div>
+  );
 });
 
 export default App;

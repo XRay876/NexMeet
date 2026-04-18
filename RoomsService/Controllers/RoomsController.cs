@@ -80,6 +80,15 @@ public class RoomsController(
         return Ok(ApiResponse<IEnumerable<RoomHistoryResponse>>.Ok(history));
     }
 
+    [HttpDelete("clear-history")]
+    [Authorize(Roles = "Member")]
+    public async Task<ActionResult<ApiResponse<object>>> ClearHistory(CancellationToken cancellationToken)
+    {
+        var userId = GetCurrentUserId();
+        await roomService.ClearHistoryAsync(userId, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(null, "Room history cleared successfully."));
+    }
+
     [HttpDelete("{id}")]
     [Authorize(Roles = "Member")]
     public async Task<ActionResult<ApiResponse<object>>> CloseRoom(Guid id, CancellationToken cancellationToken)
