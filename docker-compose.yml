@@ -65,6 +65,28 @@ services:
       postgres:
         condition: service_healthy
 
+
+  # ── Redis ────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # ── Signaling Service ────────────────────────────────────────────────────────
+  signaling-service:
+    build:
+      context: ./SignalingService
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      JwtSettings__Secret: "ba19f867320e9aad6564c13aab521fd9fa03d78b79088acf6c785662eff71275"
+      Redis__ConnectionString: redis:6379
+    ports:
+      - "5004:8080"
+    depends_on:
+      - redis
+      
   # ── Messages Service ────────────────────────────────────────────────────────
   messages-service:
     build:
@@ -80,7 +102,10 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+    volumes:
+      - nexmeet_uploads:/app/uploads
 
 volumes:
   postgres_data:
   mongo_data:
+  nexmeet_uploads:
