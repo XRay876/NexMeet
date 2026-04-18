@@ -1,3 +1,4 @@
+using IdentityService.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IdentityService.Controllers;
@@ -10,11 +11,11 @@ public class HealthController(ILogger<HealthController> logger) : ControllerBase
     public IActionResult Get()
     {
         logger.LogInformation("Health check performed");
-        
-        return Ok(new 
-        { 
-            Status = "Healthy", 
-            Timestamp = DateTime.UtcNow 
-        });
+
+        return Ok(ApiResponse<object>.Ok(new
+        {
+            Status = "Healthy",
+            Timestamp = DateTime.UtcNow
+        }));
     }
 }

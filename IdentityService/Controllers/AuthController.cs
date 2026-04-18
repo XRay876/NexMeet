@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FluentValidation;
+using IdentityService.Common;
 using IdentityService.DTO.Request;
 using IdentityService.Services.Abstractions;
 using Microsoft.AspNetCore.Authorization;
@@ -23,11 +24,11 @@ public class AuthController(
     {
         var validationResult = await registerValidator.ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
-            return BadRequest(validationResult.Errors);
+            return BadRequest(ApiResponse<object>.Fail("Validation failed", validationResult.Errors.Select(e => e.ErrorMessage)));
 
         var result = await userService.RegisterAsync(request, cancellationToken);
         SetRefreshTokenCookie(result.RefreshToken);
-        return Ok(result.Response);
+        return Ok(ApiResponse<object>.Ok(result.Response, "Registered successfully."));
     }
 
     [HttpPost("login")]
@@ -35,11 +36,11 @@ public class AuthController(
     {
         var validationResult = await loginValidator.ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
-            return BadRequest(validationResult.Errors);
+            return BadRequest(ApiResponse<object>.Fail("Validation failed", validationResult.Errors.Select(e => e.ErrorMessage)));
 
         var result = await userService.LoginAsync(request, cancellationToken);
         SetRefreshTokenCookie(result.RefreshToken);
-        return Ok(result.Response);
+        return Ok(ApiResponse<object>.Ok(result.Response));
     }
 
     [HttpPost("refresh")]
@@ -47,17 +48,13 @@ public class AuthController(
     {
         var refreshToken = Request.Cookies[RefreshTokenCookie];
         if (string.IsNullOrEmpty(refreshToken))
-            return Unauthorized("Refresh token cookie is missing.");
+            return Unauthorized(ApiResponse<object>.Fail("Refresh token cookie is missing."));
 
         var result = await userService.RefreshTokenAsync(refreshToken, cancellationToken);
         SetRefreshTokenCookie(result.RefreshToken);
-        return Ok(result.Response);
+        return Ok(ApiResponse<object>.Ok(result.Response));
     }
 
-    /// <summary>
-    /// Issues a short-lived guest token for unauthenticated users joining a meeting by name.
-    /// No refresh token is issued — guests re-authenticate per session.
-    /// </summary>
     /// <summary>
     /// Issues a short-lived guest token scoped to a specific meeting.
     /// The meeting_code claim is validated by MeetingService when joining.
@@ -67,13 +64,13 @@ public class AuthController(
     public IActionResult GuestToken([FromBody] GuestTokenRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.GuestName))
-            return BadRequest("Guest name is required.");
+            return BadRequest(ApiResponse<object>.Fail("Guest name is required."));
 
         if (string.IsNullOrWhiteSpace(request.MeetingCode))
-            return BadRequest("Meeting code is required.");
+            return BadRequest(ApiResponse<object>.Fail("Meeting code is required."));
 
         var token = tokenService.GenerateGuestToken(request.GuestName, request.MeetingCode);
-        return Ok(new { AccessToken = token });
+        return Ok(ApiResponse<object>.Ok(new { AccessToken = token }));
     }
 
     [Authorize]
@@ -82,7 +79,7 @@ public class AuthController(
     {
         var validationResult = await changePasswordValidator.ValidateAsync(request, cancellationToken);
         if (!validationResult.IsValid)
-            return BadRequest(validationResult.Errors);
+            return BadRequest(ApiResponse<object>.Fail("Validation failed", validationResult.Errors.Select(e => e.ErrorMessage)));
 
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
