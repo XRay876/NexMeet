@@ -33,6 +33,13 @@ public class FilesController(IFileService fileService) : ControllerBase
         return File(stream, fileInfo.ContentType, fileInfo.OriginalFileName);
     }
 
+    [HttpGet("room/{roomId}")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<SharedFileResponse>>>> GetByRoom(string roomId, CancellationToken cancellationToken)
+    {
+        var files = await fileService.GetFilesByRoomAsync(roomId, cancellationToken);
+        return Ok(ApiResponse<IEnumerable<SharedFileResponse>>.Ok(files));
+    }
+
     [HttpDelete("delete/{fileId}")]
     [Authorize(Policy = Constants.MemberPolicy)]
     public async Task<ActionResult<ApiResponse<object>>> Delete(string fileId, CancellationToken cancellationToken)
