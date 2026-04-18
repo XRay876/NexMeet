@@ -1,60 +1,55 @@
 using System.Security.Claims;
+using MessagesService.Common;
+using MessagesService.Services.Abstractions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
+namespace MessagesService.Hubs;
+
 [Authorize]
-public class ChatHub : Hub
+public class ChatHub(
+    IMessageService messageService,
+    ILogger<ChatHub> logger) : Hub
 {
-    private readonly MongoService _mongo;
-
-    public ChatHub(MongoService mongo)
-    {
-        _mongo = mongo;
-    }
-
     public async Task JoinRoom(string roomId)
     {
-        // Guests carry a meeting_code claim scoped to one room.
-        // Verify it matches before allowing them into the SignalR group.
         var role = Context.User?.FindFirst(ClaimTypes.Role)?.Value;
-        if (role == "Guest")
+        if (role == Constants.GuestRole)
         {
             var meetingCode = Context.User?.FindFirst("meeting_code")?.Value;
             if (meetingCode != roomId)
-                throw new HubException("Access denied: your guest token is not valid for this room.");
+            {
+                logger.LogWarning("Connection {ConnectionId} attempted to join unauthorized room {RoomCode}", Context.ConnectionId, roomId);
+                throw new HubException("Access denied: Invalid meeting code for this guest token.");
+            }
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
-        await Clients.Group(roomId).SendAsync("UserJoined", Context.ConnectionId);
+        await Clients.OthersInGroup(roomId).SendAsync("UserJoined", Context.ConnectionId);
+        logger.LogInformation("User {UserId} joined chat room {RoomId}", Context.UserIdentifier, roomId);
     }
 
     public async Task LeaveRoom(string roomId)
     {
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
-        await Clients.Group(roomId).SendAsync("UserLeft", Context.ConnectionId);
+        await Clients.OthersInGroup(roomId).SendAsync("UserLeft", Context.ConnectionId);
     }
 
     public async Task SendMessage(string roomId, string text)
     {
-        var userId = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "unknown";
-        var name = Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "Unknown";
+        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown";
+        var displayName = Context.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
 
-        var msg = new ChatMessage
-        {
-            RoomId = roomId,
-            SenderUserId = userId,
-            SenderDisplayName = name,
-            Text = text,
-            CreatedAt = DateTime.UtcNow
-        };
+        // Save to DB
+        var savedMessage = await messageService.SaveMessageAsync(roomId, userId, displayName, text);
 
-        await _mongo.Messages.InsertOneAsync(msg);
-
-        await Clients.Group(roomId).SendAsync("ReceiveMessage", msg);
+        // Broadcast to group
+        await Clients.Group(roomId).SendAsync("ReceiveMessage", savedMessage);
     }
 
     public async Task SendTypingStatus(string roomId, bool isTyping)
     {
-        await Clients.OthersInGroup(roomId)
-            .SendAsync("UserTyping", Context.ConnectionId, isTyping);
+        var displayName = Context.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+        await Clients.OthersInGroup(roomId).SendAsync("UserTyping", displayName, isTyping);
     }
 }

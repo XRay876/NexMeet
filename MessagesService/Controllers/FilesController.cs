@@ -1,83 +1,44 @@
+using MessagesService.Common;
+using MessagesService.DTO.Response;
+using MessagesService.Services.Abstractions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Bson;
-using MongoDB.Driver;
+using RoomsService.Common;
+
+namespace MessagesService.Controllers;
 
 [ApiController]
-[Route("api/files")]
+[Route("api/[controller]")]
 [Authorize]
-public class FilesController : ControllerBase
+public class FilesController(IFileService fileService) : ControllerBase
 {
-    private readonly MongoService _mongo;
-    private readonly FileStorageService _storage;
-
-    public FilesController(MongoService mongo, FileStorageService storage)
-    {
-        _mongo = mongo;
-        _storage = storage;
-    }
-
     [HttpPost("upload/{roomId}")]
-    [Authorize(Policy = "MemberOnly")]
-    public async Task<IActionResult> Upload(string roomId, IFormFile file)
+    [Authorize(Policy = Constants.MemberPolicy)]
+    public async Task<ActionResult<ApiResponse<SharedFileResponse>>> Upload(string roomId, IFormFile file, CancellationToken cancellationToken)
     {
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        var name = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+        if (file == null || file.Length == 0)
+            return BadRequest(ApiResponse<object>.Fail("No file uploaded."));
 
-        var storedName = await _storage.SaveFileAsync(file);
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        var name = User.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value ?? "Unknown";
 
-        var fileDoc = new SharedFile
-        {
-            RoomId = roomId,
-            UploaderUserId = userId,
-            UploaderDisplayName = name,
-            OriginalFileName = file.FileName,
-            StoredFileName = storedName,
-            ContentType = file.ContentType,
-            Size = file.Length,
-            UploadedAt = DateTime.UtcNow
-        };
-
-        await _mongo.Files.InsertOneAsync(fileDoc);
-
-        return Ok(fileDoc);
-    }
-
-    [HttpGet("room/{roomId}")]
-    public async Task<IActionResult> GetRoomFiles(string roomId)
-    {
-        var files = await _mongo.Files
-            .Find(x => x.RoomId == roomId)
-            .ToListAsync();
-
-        return Ok(files);
+        var response = await fileService.UploadFileAsync(roomId, userId, name, file, cancellationToken);
+        return Ok(ApiResponse<SharedFileResponse>.Ok(response));
     }
 
     [HttpGet("download/{fileId}")]
-    public async Task<IActionResult> Download(string fileId)
+    public async Task<IActionResult> Download(string fileId, CancellationToken cancellationToken)
     {
-        var file = await _mongo.Files
-            .Find(x => x.Id == ObjectId.Parse(fileId))
-            .FirstOrDefaultAsync();
-
-        var path = _storage.GetFilePath(file.StoredFileName);
-
-        return PhysicalFile(path, file.ContentType, file.OriginalFileName);
+        var (stream, fileInfo) = await fileService.DownloadFileAsync(fileId, cancellationToken);
+        return File(stream, fileInfo.ContentType, fileInfo.OriginalFileName);
     }
 
     [HttpDelete("delete/{fileId}")]
-    public async Task<IActionResult> Delete(string fileId)
+    [Authorize(Policy = Constants.MemberPolicy)]
+    public async Task<ActionResult<ApiResponse<object>>> Delete(string fileId, CancellationToken cancellationToken)
     {
-        var file = await _mongo.Files
-            .Find(x => x.Id == ObjectId.Parse(fileId))
-            .FirstOrDefaultAsync();
-
-        var path = _storage.GetFilePath(file.StoredFileName);
-
-        if (System.IO.File.Exists(path))
-            System.IO.File.Delete(path);
-
-        await _mongo.Files.DeleteOneAsync(x => x.Id == file.Id);
-
-        return Ok();
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        await fileService.DeleteFileAsync(fileId, userId, cancellationToken);
+        return Ok(ApiResponse<object>.Ok(null, "File deleted successfully."));
     }
 }
