@@ -1,4 +1,4 @@
-export type Role = 'Member' | 'Guest' | 'Unknown';
+export type Role = "Member" | "Guest" | "Unknown";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -24,9 +24,9 @@ export interface JwtClaims {
   meeting_code?: string;
   sub?: string;
   nameid?: string;
-  'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'?: Role;
-  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'?: string;
-  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'?: string;
+  "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"?: Role;
+  "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"?: string;
+  "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"?: string;
 }
 
 export interface Room {
