@@ -48,6 +48,23 @@ services:
       postgres:
         condition: service_healthy
 
+  # ── Meeting Rooms Service ────────────────────────────────────────────────────────
+
+  rooms-service:
+    build:
+      context: ./RoomsService
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5003:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=NexMeetRooms;Username=postgres;Password=postgres"
+      JwtSettings__Secret: "ba19f867320e9aad6564c13aab521fd9fa03d78b79088acf6c785662eff71275"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # ── Messages Service ────────────────────────────────────────────────────────
   messages-service:
     build:
