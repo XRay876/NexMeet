@@ -37,19 +37,33 @@ public class ChatHub(
 
     public async Task SendMessage(string roomId, string text)
     {
-        var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown";
-        var displayName = Context.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+        var userId =
+            Context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+            Context.User?.FindFirst("sub")?.Value ??
+            "unknown";
 
-        // Save to DB
+        var displayName =
+            Context.User?.FindFirst(ClaimTypes.Name)?.Value ??
+            Context.User?.FindFirst("name")?.Value ??
+            Context.User?.FindFirst("displayName")?.Value ??
+            Context.User?.FindFirst("unique_name")?.Value ??
+            "Unknown";
+
         var savedMessage = await messageService.SaveMessageAsync(roomId, userId, displayName, text);
 
-        // Broadcast to group
         await Clients.Group(roomId).SendAsync("ReceiveMessage", savedMessage);
     }
 
     public async Task SendTypingStatus(string roomId, bool isTyping)
     {
-        var displayName = Context.User?.FindFirst(ClaimTypes.Name)?.Value ?? "Unknown";
+        var displayName =
+            Context.User?.FindFirst(ClaimTypes.Name)?.Value ??
+            Context.User?.FindFirst("name")?.Value ??
+            Context.User?.FindFirst("displayName")?.Value ??
+            Context.User?.FindFirst("unique_name")?.Value ??
+            "Unknown";
+
         await Clients.OthersInGroup(roomId).SendAsync("UserTyping", displayName, isTyping);
     }
 }
+

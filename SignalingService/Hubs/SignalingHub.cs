@@ -7,6 +7,10 @@ namespace SignalingService.Hubs;
 [Authorize]
 public class SignalingHub(ILogger<SignalingHub> logger) : Hub
 {
+    // Track which room each connection is in
+    private static readonly Dictionary<string, string> ConnectionRooms = new();
+    private static readonly object LockObject = new();
+
     public async Task JoinMeeting(string roomCode)
     {
         // 1. Guest Validation
@@ -21,16 +25,28 @@ public class SignalingHub(ILogger<SignalingHub> logger) : Hub
             }
         }
 
-        // 2. Add to SignalR Group
+        // 2. Track this connection in the room
+        lock (LockObject)
+        {
+            ConnectionRooms[Context.ConnectionId] = roomCode;
+        }
+
+        // 3. Add to SignalR Group
         await Groups.AddToGroupAsync(Context.ConnectionId, roomCode);
         logger.LogInformation("Connection {ConnectionId} joined room {RoomCode}", Context.ConnectionId, roomCode);
 
-        // 3. Notify others in the room that a new peer is ready to connect
+        // 4. Notify others in the room that a new peer is ready to connect
         await Clients.OthersInGroup(roomCode).SendAsync("PeerJoined", Context.ConnectionId);
     }
 
     public async Task LeaveMeeting(string roomCode)
     {
+        // Remove tracking
+        lock (LockObject)
+        {
+            ConnectionRooms.Remove(Context.ConnectionId);
+        }
+
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomCode);
         logger.LogInformation("Connection {ConnectionId} left room {RoomCode}", Context.ConnectionId, roomCode);
 
@@ -60,9 +76,26 @@ public class SignalingHub(ILogger<SignalingHub> logger) : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        logger.LogInformation("Connection {ConnectionId} disconnected.", Context.ConnectionId);
-        // Note: It's best practice for the frontend to call LeaveMeeting explicitly, 
-        // but if they close the tab, SignalR cleans up groups automatically.
+        logger.LogInformation("Connection {ConnectionId} disconnected. Exception: {Exception}", Context.ConnectionId, exception?.Message);
+
+        // Get the room this connection was in
+        string? roomCode = null;
+        lock (LockObject)
+        {
+            if (ConnectionRooms.TryGetValue(Context.ConnectionId, out var room))
+            {
+                roomCode = room;
+                ConnectionRooms.Remove(Context.ConnectionId);
+            }
+        }
+
+        // Notify peers in the room that this connection left
+        if (!string.IsNullOrEmpty(roomCode))
+        {
+            logger.LogInformation("Notifying peers in room {RoomCode} that {ConnectionId} disconnected", roomCode, Context.ConnectionId);
+            await Clients.OthersInGroup(roomCode).SendAsync("PeerLeft", Context.ConnectionId);
+        }
+
         await base.OnDisconnectedAsync(exception);
     }
 }

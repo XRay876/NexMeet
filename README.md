@@ -90,3 +90,6 @@ NexMeet provides a secure environment for professional and personal video confer
 *   **NAT Traversal:** Strict firewalls may block P2P UDP traffic. *Mitigation:* Implementation of TURN relay servers.
 *   **Knowledge Gaps:** Complexity in managing asynchronous socket programming and media bitrates. *Mitigation:* Extensive testing with Python/C# network libraries.
 *   **Time Constraints:** Feature-rich messenger development is complex. *Mitigation:* Prioritize core signaling and transport logic (TCP/UDP) over UI aesthetics.
+
+## Frontend
+A React frontend is available in `frontend/` and is exposed on `http://localhost:5173` when running `docker compose up --build`.
