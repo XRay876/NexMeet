@@ -79,7 +79,10 @@ builder.Services.AddOpenApi();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy => 
-        policy.AllowAnyHeader().AllowAnyMethod().AllowCredentials().WithOrigins("*"));
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials());
 });
 
 builder.Services.AddScoped<IMessageService, MessageService>();

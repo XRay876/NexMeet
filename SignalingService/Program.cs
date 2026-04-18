@@ -73,10 +73,10 @@ builder.Services.AddOpenApi();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy => 
-        policy.AllowAnyHeader()
+        policy.SetIsOriginAllowed(_ => true) 
+              .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials()
-              .WithOrigins("*")); 
+              .AllowCredentials());
 });
 
 builder.Services.AddScoped<IIceServerService, IceServerService>();

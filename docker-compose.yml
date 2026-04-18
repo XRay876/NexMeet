@@ -5,7 +5,7 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: NexMeetIdentity
+      POSTGRES_DB: NexMeet
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
@@ -31,6 +31,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+  
+  # ── Redis ────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
 
   # ── Identity Service ────────────────────────────────────────────────────────
   identity-service:
@@ -38,8 +45,6 @@ services:
       context: ./IdentityService
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "5001:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=NexMeetIdentity;Username=postgres;Password=postgres"
@@ -64,14 +69,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-
-
-  # ── Redis ────────────────────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-
+  
   # ── Signaling Service ────────────────────────────────────────────────────────
   signaling-service:
     build:
@@ -81,29 +79,43 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       JwtSettings__Secret: "ba19f867320e9aad6564c13aab521fd9fa03d78b79088acf6c785662eff71275"
-      Redis__ConnectionString: redis:6379
-    ports:
-      - "5004:8080"
+      ConnectionStrings__Redis: "redis:6379"
     depends_on:
-      - redis
-      
+      redis:
+        condition: service_started
+
   # ── Messages Service ────────────────────────────────────────────────────────
   messages-service:
     build:
       context: ./MessagesService
       dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "5002:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__MongoDB: "mongodb://mongo:27017"
+      MongoSettings__ConnectionString: "mongodb://mongo:27017"
+      ConnectionStrings__Redis: "redis:6379"
       JwtSettings__Secret: "ba19f867320e9aad6564c13aab521fd9fa03d78b79088acf6c785662eff71275"
+    volumes:
+      - nexmeet_uploads:/app/uploads
     depends_on:
       mongo:
         condition: service_healthy
-    volumes:
-      - nexmeet_uploads:/app/uploads
+      redis:
+        condition: service_started
+
+  # ── API Gateway ──────────────────────────────────────────────────
+  api-gateway:
+    build: ./ApiGateway
+    restart: unless-stopped
+    ports:
+      - "5000:8080" 
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    depends_on:
+      - identity-service
+      - rooms-service
+      - messages-service
+      - signaling-service
 
 volumes:
   postgres_data:
