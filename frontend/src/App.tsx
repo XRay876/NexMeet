@@ -50,7 +50,7 @@ function App() {
     <div className="container">
       <header>
         <h1>NexMeet</h1>
-        <p>Real-time chat and video rooms.</p>
+        <p>Real-time chat and video rooms</p>
         {token ? (
           <div className="session">
             <span>
