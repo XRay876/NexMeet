@@ -50,7 +50,7 @@ function App() {
     <div className="container">
       <header>
         <h1>NexMeet</h1>
-        <p>Role-aware room chat, files, history, and WebRTC calling.</p>
+        <p>Real-time chat and video rooms.</p>
         {token ? (
           <div className="session">
             <span>
