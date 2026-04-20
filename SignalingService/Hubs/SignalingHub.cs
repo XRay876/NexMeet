@@ -57,25 +57,22 @@ public class SignalingHub(ILogger<SignalingHub> logger) : Hub
             RoomPeers[roomCode].Add((Context.ConnectionId, displayName, isHost));
         }
 
-        // 6. Send all existing peers to the new joiner
+        // 6. Notify existing peers that a new peer joined — they will create offers
+        await Clients.OthersInGroup(roomCode).SendAsync("PeerJoined", Context.ConnectionId, displayName, isHost);
+
+        // 7. Send existing peers' info to the new joiner (display names only, no offer creation)
         List<(string ConnectionId, string DisplayName, bool IsHost)> existingPeers;
         lock (LockObject)
         {
-            // Get all peers except the one joining (they're already added)
             existingPeers = RoomPeers[roomCode]
                 .Where(p => p.ConnectionId != Context.ConnectionId)
                 .ToList();
         }
 
-        // Send each existing peer to the new joiner
         foreach (var (peerId, peerName, peerIsHost) in existingPeers)
         {
-            await Clients.Caller.SendAsync("PeerJoined", peerId, peerName, peerIsHost);
+            await Clients.Caller.SendAsync("PeerInfo", peerId, peerName, peerIsHost);
         }
-
-        // 7. Notify others in the room that a new peer is ready to connect
-        // Send the new peer's info to existing peers
-        await Clients.OthersInGroup(roomCode).SendAsync("PeerJoined", Context.ConnectionId, displayName, isHost);
     }
 
     public async Task LeaveMeeting(string roomCode)

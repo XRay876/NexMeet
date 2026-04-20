@@ -122,165 +122,16 @@ const Video = memo(function Video({
   label?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const assignedStreamIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !stream) return;
-
-    // Track which stream we've already assigned to prevent re-assignment
-    if (assignedStreamIdRef.current === stream.id) {
-      console.log(`[Video] Stream ${stream.id} already assigned, skipping`);
-      return;
+    if (videoRef.current && videoRef.current.srcObject !== stream) {
+      videoRef.current.srcObject = stream;
     }
-
-    const videoTracks = stream.getVideoTracks();
-    const audioTracks = stream.getAudioTracks();
-    console.log(
-      `[Video] Stream ${stream.id} received: ${videoTracks.length} video(s), ${audioTracks.length} audio(s)`,
-    );
-
-    // Log track details
-    videoTracks.forEach((track, idx) => {
-      console.log(
-        `  [Video] Video track ${idx}: enabled=${track.enabled}, state=${track.readyState}, id=${track.id}`,
-      );
-    });
-    audioTracks.forEach((track, idx) => {
-      console.log(
-        `  [Video] Audio track ${idx}: enabled=${track.enabled}, state=${track.readyState}, id=${track.id}`,
-      );
-    });
-
-    // Assign stream to video element
-    console.log(`[Video] Assigning stream ${stream.id} to video element`);
-    video.srcObject = stream;
-    assignedStreamIdRef.current = stream.id;
-    console.log(`[Video] srcObject assignment complete`);
-
-    // Listen for track changes
-    const handleAddTrack = (event: Event) => {
-      const mediaEvent = event as MediaStreamTrackEvent;
-      console.log(
-        `✓ Track added to stream: ${mediaEvent.track.kind}, enabled: ${mediaEvent.track.enabled}, readyState: ${mediaEvent.track.readyState}`,
-      );
-    };
-
-    const handleRemoveTrack = (event: Event) => {
-      const mediaEvent = event as MediaStreamTrackEvent;
-      console.log(`✗ Track removed from stream: ${mediaEvent.track.kind}`);
-    };
-
-    stream.addEventListener("addtrack", handleAddTrack);
-    stream.addEventListener("removetrack", handleRemoveTrack);
-
-    // Force play with explicit error handling
-    const attemptPlay = async () => {
-      try {
-        // Check video element state BEFORE attempting play
-        console.log(
-          `[Video] Before play - readyState: ${video.readyState}, networkState: ${video.networkState}, paused: ${video.paused}`,
-        );
-
-        const playPromise = await video.play();
-        console.log(
-          `[Video] ✓ Play successful. readyState: ${video.readyState}, networkState: ${video.networkState}`,
-        );
-      } catch (err) {
-        // Autoplay might be blocked, but we can still render the stream
-        const errorMsg = (err as Error).message;
-        if (
-          errorMsg.includes("autoplay") ||
-          errorMsg.includes("NotAllowedError")
-        ) {
-          console.warn(`[Video] ⚠ Autoplay blocked by browser policy`);
-          // Force muted play as workaround
-          video.muted = true;
-          try {
-            await video.play();
-            console.log(
-              `[Video] ✓ Play successful with muted. readyState: ${video.readyState}`,
-            );
-          } catch (err2) {
-            console.error(
-              `[Video] ✗ Even muted play failed:`,
-              (err2 as Error).message,
-            );
-          }
-        } else {
-          console.error(`[Video] ✗ Video playback error:`, errorMsg);
-        }
-      }
-    };
-
-    attemptPlay();
-
-    // Monitor video element state changes with more detail
-    const handleLoadStart = () => console.log(`[Video] 📺 loadstart event`);
-    const handleLoadedMetadata = () =>
-      console.log(
-        `[Video] 📺 loadedmetadata - duration: ${video.duration}, videoWidth: ${video.videoWidth}, videoHeight: ${video.videoHeight}`,
-      );
-    const handleCanPlay = () => console.log(`[Video] 📺 canplay event`);
-    const handlePlaying = () =>
-      console.log(
-        `[Video] 📺 playing event - videoWidth: ${video.videoWidth}, videoHeight: ${video.videoHeight}`,
-      );
-    const handleError = () => {
-      const errorCode = video.error?.code;
-      const errorMsg = video.error?.message;
-      console.error(
-        `[Video] ✗ error event - code: ${errorCode}, message: ${errorMsg}`,
-      );
-    };
-    const handleSuspend = () => console.log(`[Video] 📺 suspend event`);
-    const handleStalled = () =>
-      console.log(`[Video] 📺 stalled event - readyState: ${video.readyState}`);
-    const handleDataUnavailable = () =>
-      console.log(`[Video] ⚠ <video> no data to display`);
-
-    video.addEventListener("loadstart", handleLoadStart);
-    video.addEventListener("loadedmetadata", handleLoadedMetadata);
-    video.addEventListener("canplay", handleCanPlay);
-    video.addEventListener("playing", handlePlaying);
-    video.addEventListener("error", handleError);
-    video.addEventListener("suspend", handleSuspend);
-    video.addEventListener("stalled", handleStalled);
-
-    // Check readyState periodically
-    const stateCheckInterval = setInterval(() => {
-      if (video.readyState === 0) {
-        console.warn(
-          `[Video] ⚠ readyState stuck at 0 (HAVE_NOTHING) - no data available`,
-        );
-      } else if (video.readyState === 4) {
-        console.log(`[Video] ✓ readyState: 4 (HAVE_ENOUGH_DATA)`);
-      }
-    }, 2000);
-
-    return () => {
-      clearInterval(stateCheckInterval);
-      stream.removeEventListener("addtrack", handleAddTrack);
-      stream.removeEventListener("removetrack", handleRemoveTrack);
-      video.removeEventListener("loadstart", handleLoadStart);
-      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      video.removeEventListener("canplay", handleCanPlay);
-      video.removeEventListener("playing", handlePlaying);
-      video.removeEventListener("error", handleError);
-      video.removeEventListener("suspend", handleSuspend);
-      video.removeEventListener("stalled", handleStalled);
-    };
   }, [stream]);
 
   return (
-    <>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted={muted}
-        style={{ width: "100%", height: "100%" }}
-      />
+    <div style={{ position: "relative" }}>
+      <video ref={videoRef} autoPlay playsInline muted={muted} style={{ width: "100%", height: "100%" }} />
       {label && (
         <div
           style={{
@@ -299,7 +150,7 @@ const Video = memo(function Video({
           {label}
         </div>
       )}
-    </>
+    </div>
   );
 });
 

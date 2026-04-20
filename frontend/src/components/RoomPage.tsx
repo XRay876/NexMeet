@@ -48,8 +48,6 @@ export function RoomPage({
   // Map peerId to userId for display name lookup
   const peerToUserIdRef = useRef(new Map<string, string>());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  // Store remote streams to accumulate all tracks (audio + video) per peer
-  const remoteStreamsRef = useRef(new Map<string, MediaStream>());
 
   const peers = peersRef.current;
   const [videos, setVideos] = useState<
@@ -229,138 +227,28 @@ export function RoomPage({
         .build();
 
       const createPeer = (id: string) => {
-        // Don't create duplicate peer connections
-        if (peers.has(id)) {
-          console.log(`Reusing existing peer connection for ${id}`);
-          return peers.get(id)!;
-        }
+        if (peers.has(id)) return peers.get(id)!;
 
-        console.log(`Creating new peer connection for ${id}`);
         const pc = new RTCPeerConnection({ iceServers: iceConfig.iceServers });
 
-        // Add all local media tracks to the peer connection
-        if (localMediaRef.current) {
-          const tracks = localMediaRef.current.getTracks();
-          console.log(
-            `[${id}] Adding ${tracks.length} local tracks: ${tracks.map((t) => `${t.kind}(enabled=${t.enabled}, state=${t.readyState})`).join(", ")}`,
-          );
-          tracks.forEach((track) => {
-            const sender = pc.addTrack(track, localMediaRef.current!);
-            console.log(
-              `[${id}] ✓ Added ${track.kind} track, RTCRtpSender created`,
-            );
-          });
-        } else {
-          console.error(`[${id}] ✗ ERROR: No local media available!`);
-        }
-
-        // Monitor connection state changes for debugging and stability
-        pc.onconnectionstatechange = () => {
-          const newState = pc.connectionState;
-          console.log(`[${id}] connectionState: ${newState}`);
-          if (newState === "failed") {
-            console.error(
-              `[${id}] ✗ Connection FAILED - remote video unlikely to work`,
-            );
-          } else if (newState === "connected") {
-            console.log(
-              `[${id}] ✓ Connection CONNECTED - remote tracks should flow`,
-            );
-          } else if (newState === "disconnected") {
-            console.warn(`[${id}] ⚠ Connection DISCONNECTED`);
+        localMediaRef.current?.getTracks().forEach((track: MediaStreamTrack) => {
+          if (localMediaRef.current) {
+            pc.addTrack(track, localMediaRef.current);
           }
-        };
-
-        pc.oniceconnectionstatechange = () => {
-          const newState = pc.iceConnectionState;
-          console.log(`[${id}] iceConnectionState: ${newState}`);
-          if (newState === "failed") {
-            console.error(`[${id}] ✗ ICE FAILED - no network path established`);
-          } else if (newState === "connected" || newState === "completed") {
-            console.log(
-              `[${id}] ✓ ICE ${newState.toUpperCase()} - remote video should work`,
-            );
-          }
-        };
-
-        pc.onsignalingstatechange = () => {
-          console.log(
-            `Signaling state changed to ${pc.signalingState} for peer ${id}`,
-          );
-        };
+        });
 
         pc.onicecandidate = (event) => {
           if (event.candidate) {
-            signalingHub
-              .invoke("SendIceCandidate", id, event.candidate)
-              .catch((err) => {
-                console.error(`Failed to send ICE candidate to ${id}:`, err);
-              });
+            signalingHub.invoke("SendIceCandidate", id, event.candidate);
           }
         };
 
         pc.ontrack = (event) => {
           if (!mounted) return;
-
-          const trackKind = event.track.kind;
-          const trackEnabled = event.track.enabled;
-          const trackReadyState = event.track.readyState;
-          const streamCount = event.streams.length;
-
-          console.log(
-            `[ontrack] Received ${trackKind} track from peer ${id}. Enabled: ${trackEnabled}, State: ${trackReadyState}, Streams: ${streamCount}`,
-          );
-
-          // Always use the stream from the event - browsers populate this
-          if (event.streams && event.streams.length > 0) {
-            const remoteStream = event.streams[0];
-            const currentStreamId = remoteStream.id;
-            const allTracks = remoteStream.getTracks();
-            const videoTracks = remoteStream.getVideoTracks();
-            const audioTracks = remoteStream.getAudioTracks();
-
-            console.log(
-              `[ontrack] Stream ID: ${currentStreamId}, Total tracks: ${allTracks.length}, Video: ${videoTracks.length}, Audio: ${audioTracks.length}`,
-            );
-            allTracks.forEach((t) => {
-              console.log(
-                `  - ${t.kind} track: enabled=${t.enabled}, state=${t.readyState}`,
-              );
-            });
-
-            // CRITICAL: Only store stream and add peer on FIRST track arrival
-            // Don't update on subsequent tracks (audio after video, etc)
-            const previousStream = remoteStreamsRef.current.get(id);
-            if (!previousStream) {
-              // First track from this peer
-              console.log(
-                `[ontrack] FIRST track from ${id}, storing stream and adding to videos`,
-              );
-              // Store the stream reference once
-              remoteStreamsRef.current.set(id, remoteStream);
-
-              // Add to videos state
-              setVideos((prev) => {
-                const exists = prev.some((v) => v.id === id);
-                if (!exists) {
-                  console.log(
-                    `[ontrack] Adding peer ${id} to videos array with stream`,
-                  );
-                  return [...prev, { id, stream: remoteStream }];
-                }
-                return prev;
-              });
-            } else {
-              // Subsequent track - do NOT update stream reference or state
-              console.log(
-                `[ontrack] Subsequent ${trackKind} track from ${id}, skipping state update (stream already in remoteStreamsRef)`,
-              );
-            }
-          } else {
-            console.error(
-              `[ontrack] ERROR: Track received from peer ${id} but no streams available in event!`,
-            );
-          }
+          setVideos((prev) => {
+            if (prev.some((v: { id: string }) => v.id === id)) return prev;
+            return [...prev, { id, stream: event.streams[0] }];
+          });
         };
 
         peers.set(id, pc);
@@ -370,127 +258,57 @@ export function RoomPage({
       signalingHub.on(
         "PeerJoined",
         async (peerId: string, displayName: string, isHost: boolean) => {
-          console.log(
-            `[PeerJoined] ${peerId} (${displayName}, host=${isHost})`,
-          );
-
-          // Store the display name for this peer immediately
           setPeerDisplayNames((prev) => {
             const updated = new Map(prev);
             updated.set(peerId, displayName);
             return updated;
           });
-
-          // Track the host
-          if (isHost) {
-            setHostPeerId(peerId);
-          }
+          if (isHost) setHostPeerId(peerId);
 
           const pc = createPeer(peerId);
-          try {
-            console.log(`[Signaling] Creating offer for ${peerId}`);
-            const offer = await pc.createOffer();
-            console.log(`[Signaling] Offer created, setting local description`);
-            await pc.setLocalDescription(offer);
-            console.log(
-              `[Signaling] Local description set, sending offer via SignalR`,
-            );
-            await signalingHub
-              .invoke("SendOffer", peerId, offer)
-              .catch((err) => {
-                console.error(
-                  `[Signaling] ✗ Failed to send offer to ${peerId}:`,
-                  err,
-                );
-              });
-            console.log(`[Signaling] Offer sent to ${peerId}`);
-          } catch (err) {
-            console.error(
-              `[Signaling] ✗ Error creating offer for ${peerId}:`,
-              err,
-            );
-          }
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          await signalingHub.invoke("SendOffer", peerId, offer);
+        },
+      );
+
+      // Receive info about existing peers (display names only, no offer)
+      signalingHub.on(
+        "PeerInfo",
+        (peerId: string, displayName: string, isHost: boolean) => {
+          setPeerDisplayNames((prev: Map<string, string>) => {
+            const updated = new Map(prev);
+            updated.set(peerId, displayName);
+            return updated;
+          });
+          if (isHost) setHostPeerId(peerId);
         },
       );
 
       signalingHub.on(
         "ReceiveOffer",
         async (peerId: string, offer: RTCSessionDescriptionInit) => {
-          try {
-            console.log(`Received offer from ${peerId}`);
-            const pc = createPeer(peerId);
-            await pc.setRemoteDescription(offer);
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            await signalingHub
-              .invoke("SendAnswer", peerId, answer)
-              .catch((err) => {
-                console.error(`Failed to send answer to ${peerId}:`, err);
-              });
-          } catch (err) {
-            console.error(`Error handling offer from ${peerId}:`, err);
-          }
+          const pc = createPeer(peerId);
+          await pc.setRemoteDescription(offer);
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          await signalingHub.invoke("SendAnswer", peerId, answer);
         },
       );
 
       signalingHub.on(
         "ReceiveAnswer",
         async (peerId: string, answer: RTCSessionDescriptionInit) => {
-          try {
-            console.log(`[Signaling] Received answer from ${peerId}`);
-            const pc = peers.get(peerId);
-            if (pc) {
-              console.log(
-                `[Signaling] Setting remote description (answer) for ${peerId}`,
-              );
-              await pc.setRemoteDescription(answer);
-              console.log(
-                `[Signaling] ✓ Remote description set for ${peerId}, SDP exchange complete`,
-              );
-            } else {
-              console.error(
-                `[Signaling] ✗ No peer connection found for ${peerId}`,
-              );
-            }
-          } catch (err) {
-            console.error(
-              `[Signaling] ✗ Error handling answer from ${peerId}:`,
-              err,
-            );
-          }
+          const pc = peers.get(peerId);
+          if (pc) await pc.setRemoteDescription(answer);
         },
       );
 
       signalingHub.on(
         "ReceiveIceCandidate",
         async (peerId: string, candidate: RTCIceCandidateInit) => {
-          try {
-            const pc = peers.get(peerId);
-            if (pc) {
-              await pc.addIceCandidate(candidate).catch((err) => {
-                // Some candidates might fail to add, which is normal during connection setup
-                if (pc.remoteDescription) {
-                  console.debug(
-                    `[Signaling] ICE candidate from ${peerId} failed (remote description set):`,
-                    err.message,
-                  );
-                } else {
-                  console.debug(
-                    `[Signaling] ICE candidate from ${peerId} received before remote description (buffered)`,
-                  );
-                }
-              });
-            } else {
-              console.warn(
-                `[Signaling] Received ICE candidate for unknown peer ${peerId}`,
-              );
-            }
-          } catch (err) {
-            console.error(
-              `[Signaling] ✗ Error handling ICE candidate from ${peerId}:`,
-              err,
-            );
-          }
+          const pc = peers.get(peerId);
+          if (pc) await pc.addIceCandidate(candidate);
         },
       );
 
@@ -501,14 +319,8 @@ export function RoomPage({
           pc.close();
           peers.delete(peerId);
         }
-        // Clean up remote stream
-        remoteStreamsRef.current.delete(peerId);
-        // Remove the video stream for this peer
         setVideos((prev) => prev.filter((v) => v.id !== peerId));
-        // Clear host if the host left
-        if (peerId === hostPeerId) {
-          setHostPeerId(null);
-        }
+        if (peerId === hostPeerId) setHostPeerId(null);
       });
 
       try {
@@ -557,9 +369,6 @@ export function RoomPage({
       // Close all peer connections
       peers.forEach((pc) => pc.close());
       peers.clear();
-
-      // Clear remote streams
-      remoteStreamsRef.current.clear();
 
       // Stop all local media tracks
       localMediaRef.current?.getTracks().forEach((track) => track.stop());
