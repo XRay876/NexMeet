@@ -139,13 +139,17 @@ const Video = memo(function Video({
     console.log(
       `[Video] Stream ${stream.id} received: ${videoTracks.length} video(s), ${audioTracks.length} audio(s)`,
     );
-    
+
     // Log track details
     videoTracks.forEach((track, idx) => {
-      console.log(`  [Video] Video track ${idx}: enabled=${track.enabled}, state=${track.readyState}, id=${track.id}`);
+      console.log(
+        `  [Video] Video track ${idx}: enabled=${track.enabled}, state=${track.readyState}, id=${track.id}`,
+      );
     });
     audioTracks.forEach((track, idx) => {
-      console.log(`  [Video] Audio track ${idx}: enabled=${track.enabled}, state=${track.readyState}, id=${track.id}`);
+      console.log(
+        `  [Video] Audio track ${idx}: enabled=${track.enabled}, state=${track.readyState}, id=${track.id}`,
+      );
     });
 
     // Assign stream to video element
@@ -164,9 +168,7 @@ const Video = memo(function Video({
 
     const handleRemoveTrack = (event: Event) => {
       const mediaEvent = event as MediaStreamTrackEvent;
-      console.log(
-        `✗ Track removed from stream: ${mediaEvent.track.kind}`,
-      );
+      console.log(`✗ Track removed from stream: ${mediaEvent.track.kind}`);
     };
 
     stream.addEventListener("addtrack", handleAddTrack);
@@ -176,22 +178,34 @@ const Video = memo(function Video({
     const attemptPlay = async () => {
       try {
         // Check video element state BEFORE attempting play
-        console.log(`[Video] Before play - readyState: ${video.readyState}, networkState: ${video.networkState}, paused: ${video.paused}`);
-        
+        console.log(
+          `[Video] Before play - readyState: ${video.readyState}, networkState: ${video.networkState}, paused: ${video.paused}`,
+        );
+
         const playPromise = await video.play();
-        console.log(`[Video] ✓ Play successful. readyState: ${video.readyState}, networkState: ${video.networkState}`);
+        console.log(
+          `[Video] ✓ Play successful. readyState: ${video.readyState}, networkState: ${video.networkState}`,
+        );
       } catch (err) {
         // Autoplay might be blocked, but we can still render the stream
         const errorMsg = (err as Error).message;
-        if (errorMsg.includes("autoplay") || errorMsg.includes("NotAllowedError")) {
+        if (
+          errorMsg.includes("autoplay") ||
+          errorMsg.includes("NotAllowedError")
+        ) {
           console.warn(`[Video] ⚠ Autoplay blocked by browser policy`);
           // Force muted play as workaround
           video.muted = true;
           try {
             await video.play();
-            console.log(`[Video] ✓ Play successful with muted. readyState: ${video.readyState}`);
+            console.log(
+              `[Video] ✓ Play successful with muted. readyState: ${video.readyState}`,
+            );
           } catch (err2) {
-            console.error(`[Video] ✗ Even muted play failed:`, (err2 as Error).message);
+            console.error(
+              `[Video] ✗ Even muted play failed:`,
+              (err2 as Error).message,
+            );
           }
         } else {
           console.error(`[Video] ✗ Video playback error:`, errorMsg);
@@ -204,17 +218,26 @@ const Video = memo(function Video({
     // Monitor video element state changes with more detail
     const handleLoadStart = () => console.log(`[Video] 📺 loadstart event`);
     const handleLoadedMetadata = () =>
-      console.log(`[Video] 📺 loadedmetadata - duration: ${video.duration}, videoWidth: ${video.videoWidth}, videoHeight: ${video.videoHeight}`);
+      console.log(
+        `[Video] 📺 loadedmetadata - duration: ${video.duration}, videoWidth: ${video.videoWidth}, videoHeight: ${video.videoHeight}`,
+      );
     const handleCanPlay = () => console.log(`[Video] 📺 canplay event`);
-    const handlePlaying = () => console.log(`[Video] 📺 playing event - videoWidth: ${video.videoWidth}, videoHeight: ${video.videoHeight}`);
+    const handlePlaying = () =>
+      console.log(
+        `[Video] 📺 playing event - videoWidth: ${video.videoWidth}, videoHeight: ${video.videoHeight}`,
+      );
     const handleError = () => {
       const errorCode = video.error?.code;
       const errorMsg = video.error?.message;
-      console.error(`[Video] ✗ error event - code: ${errorCode}, message: ${errorMsg}`);
+      console.error(
+        `[Video] ✗ error event - code: ${errorCode}, message: ${errorMsg}`,
+      );
     };
     const handleSuspend = () => console.log(`[Video] 📺 suspend event`);
-    const handleStalled = () => console.log(`[Video] 📺 stalled event - readyState: ${video.readyState}`);
-    const handleDataUnavailable = () => console.log(`[Video] ⚠ <video> no data to display`);
+    const handleStalled = () =>
+      console.log(`[Video] 📺 stalled event - readyState: ${video.readyState}`);
+    const handleDataUnavailable = () =>
+      console.log(`[Video] ⚠ <video> no data to display`);
 
     video.addEventListener("loadstart", handleLoadStart);
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
@@ -223,11 +246,13 @@ const Video = memo(function Video({
     video.addEventListener("error", handleError);
     video.addEventListener("suspend", handleSuspend);
     video.addEventListener("stalled", handleStalled);
-    
+
     // Check readyState periodically
     const stateCheckInterval = setInterval(() => {
       if (video.readyState === 0) {
-        console.warn(`[Video] ⚠ readyState stuck at 0 (HAVE_NOTHING) - no data available`);
+        console.warn(
+          `[Video] ⚠ readyState stuck at 0 (HAVE_NOTHING) - no data available`,
+        );
       } else if (video.readyState === 4) {
         console.log(`[Video] ✓ readyState: 4 (HAVE_ENOUGH_DATA)`);
       }

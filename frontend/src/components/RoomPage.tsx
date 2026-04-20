@@ -246,7 +246,9 @@ export function RoomPage({
           );
           tracks.forEach((track) => {
             const sender = pc.addTrack(track, localMediaRef.current!);
-            console.log(`[${id}] ✓ Added ${track.kind} track, RTCRtpSender created`);
+            console.log(
+              `[${id}] ✓ Added ${track.kind} track, RTCRtpSender created`,
+            );
           });
         } else {
           console.error(`[${id}] ✗ ERROR: No local media available!`);
@@ -255,13 +257,15 @@ export function RoomPage({
         // Monitor connection state changes for debugging and stability
         pc.onconnectionstatechange = () => {
           const newState = pc.connectionState;
-          console.log(
-            `[${id}] connectionState: ${newState}`,
-          );
+          console.log(`[${id}] connectionState: ${newState}`);
           if (newState === "failed") {
-            console.error(`[${id}] ✗ Connection FAILED - remote video unlikely to work`);
+            console.error(
+              `[${id}] ✗ Connection FAILED - remote video unlikely to work`,
+            );
           } else if (newState === "connected") {
-            console.log(`[${id}] ✓ Connection CONNECTED - remote tracks should flow`);
+            console.log(
+              `[${id}] ✓ Connection CONNECTED - remote tracks should flow`,
+            );
           } else if (newState === "disconnected") {
             console.warn(`[${id}] ⚠ Connection DISCONNECTED`);
           }
@@ -269,13 +273,13 @@ export function RoomPage({
 
         pc.oniceconnectionstatechange = () => {
           const newState = pc.iceConnectionState;
-          console.log(
-            `[${id}] iceConnectionState: ${newState}`,
-          );
+          console.log(`[${id}] iceConnectionState: ${newState}`);
           if (newState === "failed") {
             console.error(`[${id}] ✗ ICE FAILED - no network path established`);
           } else if (newState === "connected" || newState === "completed") {
-            console.log(`[${id}] ✓ ICE ${newState.toUpperCase()} - remote video should work`);
+            console.log(
+              `[${id}] ✓ ICE ${newState.toUpperCase()} - remote video should work`,
+            );
           }
         };
 
@@ -319,7 +323,9 @@ export function RoomPage({
               `[ontrack] Stream ID: ${currentStreamId}, Total tracks: ${allTracks.length}, Video: ${videoTracks.length}, Audio: ${audioTracks.length}`,
             );
             allTracks.forEach((t) => {
-              console.log(`  - ${t.kind} track: enabled=${t.enabled}, state=${t.readyState}`);
+              console.log(
+                `  - ${t.kind} track: enabled=${t.enabled}, state=${t.readyState}`,
+              );
             });
 
             // CRITICAL: Only store stream and add peer on FIRST track arrival
@@ -332,12 +338,14 @@ export function RoomPage({
               );
               // Store the stream reference once
               remoteStreamsRef.current.set(id, remoteStream);
-              
+
               // Add to videos state
               setVideos((prev) => {
                 const exists = prev.some((v) => v.id === id);
                 if (!exists) {
-                  console.log(`[ontrack] Adding peer ${id} to videos array with stream`);
+                  console.log(
+                    `[ontrack] Adding peer ${id} to videos array with stream`,
+                  );
                   return [...prev, { id, stream: remoteStream }];
                 }
                 return prev;
@@ -362,8 +370,10 @@ export function RoomPage({
       signalingHub.on(
         "PeerJoined",
         async (peerId: string, displayName: string, isHost: boolean) => {
-          console.log(`[PeerJoined] ${peerId} (${displayName}, host=${isHost})`);
-          
+          console.log(
+            `[PeerJoined] ${peerId} (${displayName}, host=${isHost})`,
+          );
+
           // Store the display name for this peer immediately
           setPeerDisplayNames((prev) => {
             const updated = new Map(prev);
@@ -382,15 +392,23 @@ export function RoomPage({
             const offer = await pc.createOffer();
             console.log(`[Signaling] Offer created, setting local description`);
             await pc.setLocalDescription(offer);
-            console.log(`[Signaling] Local description set, sending offer via SignalR`);
+            console.log(
+              `[Signaling] Local description set, sending offer via SignalR`,
+            );
             await signalingHub
               .invoke("SendOffer", peerId, offer)
               .catch((err) => {
-                console.error(`[Signaling] ✗ Failed to send offer to ${peerId}:`, err);
+                console.error(
+                  `[Signaling] ✗ Failed to send offer to ${peerId}:`,
+                  err,
+                );
               });
             console.log(`[Signaling] Offer sent to ${peerId}`);
           } catch (err) {
-            console.error(`[Signaling] ✗ Error creating offer for ${peerId}:`, err);
+            console.error(
+              `[Signaling] ✗ Error creating offer for ${peerId}:`,
+              err,
+            );
           }
         },
       );
@@ -422,14 +440,23 @@ export function RoomPage({
             console.log(`[Signaling] Received answer from ${peerId}`);
             const pc = peers.get(peerId);
             if (pc) {
-              console.log(`[Signaling] Setting remote description (answer) for ${peerId}`);
+              console.log(
+                `[Signaling] Setting remote description (answer) for ${peerId}`,
+              );
               await pc.setRemoteDescription(answer);
-              console.log(`[Signaling] ✓ Remote description set for ${peerId}, SDP exchange complete`);
+              console.log(
+                `[Signaling] ✓ Remote description set for ${peerId}, SDP exchange complete`,
+              );
             } else {
-              console.error(`[Signaling] ✗ No peer connection found for ${peerId}`);
+              console.error(
+                `[Signaling] ✗ No peer connection found for ${peerId}`,
+              );
             }
           } catch (err) {
-            console.error(`[Signaling] ✗ Error handling answer from ${peerId}:`, err);
+            console.error(
+              `[Signaling] ✗ Error handling answer from ${peerId}:`,
+              err,
+            );
           }
         },
       );
@@ -454,10 +481,15 @@ export function RoomPage({
                 }
               });
             } else {
-              console.warn(`[Signaling] Received ICE candidate for unknown peer ${peerId}`);
+              console.warn(
+                `[Signaling] Received ICE candidate for unknown peer ${peerId}`,
+              );
             }
           } catch (err) {
-            console.error(`[Signaling] ✗ Error handling ICE candidate from ${peerId}:`, err);
+            console.error(
+              `[Signaling] ✗ Error handling ICE candidate from ${peerId}:`,
+              err,
+            );
           }
         },
       );
