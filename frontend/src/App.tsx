@@ -226,7 +226,7 @@ function AuthPanel({
           <h3>Create Account</h3>
           <input
             required
-            name="username"
+            name="login"
             placeholder="Username"
             autoComplete="username"
             autoFocus
