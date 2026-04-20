@@ -20,6 +20,7 @@ public class TokenService(IOptions<JwtSettings> jwtSettings) : ITokenService
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.UniqueName, user.Login),
+            new(JwtRegisteredClaimNames.Name, user.Login),
             new(JwtRegisteredClaimNames.Email, user.Email),
             new("role", "Member")
         };

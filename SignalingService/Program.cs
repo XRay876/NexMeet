@@ -9,6 +9,7 @@ using SignalingService.Hubs;
 using SignalingService.Middlewares;
 using SignalingService.Services;
 using SignalingService.Services.Abstractions;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,7 +64,7 @@ var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 if (!string.IsNullOrWhiteSpace(redisConnectionString))
 {
     signalRBuilder.AddStackExchangeRedis(redisConnectionString, options => {
-        options.Configuration.ChannelPrefix = "NexMeet_Signaling";
+        options.Configuration.ChannelPrefix = RedisChannel.Literal("NexMeet_Signaling");
     });
 }
 

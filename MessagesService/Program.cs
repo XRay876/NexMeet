@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Serilog;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -69,7 +70,7 @@ var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 if (!string.IsNullOrWhiteSpace(redisConnectionString))
 {
     signalRBuilder.AddStackExchangeRedis(redisConnectionString, options => {
-        options.Configuration.ChannelPrefix = "NexMeet_Messages";
+        options.Configuration.ChannelPrefix = RedisChannel.Literal("NexMeet_Messages");
     });
 }
 

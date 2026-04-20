@@ -54,11 +54,21 @@ export async function apiRequest<T>(
   if (!response.ok) {
     let errorMessage = `${response.status} ${response.statusText}`;
     try {
-      const errorBody = (await response.json()) as ApiResponse<unknown>;
-      errorMessage =
-        errorBody.errors?.join(", ") || errorBody.message || errorMessage;
+      const errorBody = (await response.json()) as {
+        message?: string;
+        errors?: string[];
+        error?: string;
+      };
+      // Try multiple error message fields in order of preference
+      if (errorBody.message) {
+        errorMessage = errorBody.message;
+      } else if (Array.isArray(errorBody.errors)) {
+        errorMessage = errorBody.errors.join(", ");
+      } else if (errorBody.error) {
+        errorMessage = errorBody.error;
+      }
     } catch {
-      // ignore parse failure
+      // ignore parse failure, use default error message
     }
     throw new Error(errorMessage);
   }
