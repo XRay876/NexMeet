@@ -35,7 +35,7 @@ NexMeet provides a secure environment for professional and personal video confer
 | Layer | Technology |
 | :--- | :--- |
 | **Frontend** | React (TypeScript), Vite, HTML5, CSS3, JavaScript (ES6+) |
-| **Backend** | ASP.NET Core (C#), Python (Django) |
+| **Backend** | ASP.NET Core (C#) |
 | **Real-Time Data** | WebRTC (Media), SignalR / WebSockets (Chat/Events) |
 | **Database** | PostgreSQL or MongoDB |
 | **Network Utils** | STUN/TURN Servers for NAT Traversal |
