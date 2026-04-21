@@ -15,9 +15,20 @@ import {
 import type { Role, Room } from "./types";
 import { AuthPanel } from "./components/AuthPanel";
 import { Lobby } from "./components/Lobby";
+import { ProfileModal } from "./components/ProfileModal";
 import { RoomPage } from "./components/RoomPage";
 
 type View = "auth" | "lobby" | "room";
+
+function readRoomParam(): string | null {
+  return new URLSearchParams(window.location.search).get("room");
+}
+
+function clearRoomParam() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("room");
+  window.history.replaceState({}, "", url.toString());
+}
 
 function App() {
   const [token, setToken] = useState<string | null>(getToken());
@@ -26,6 +37,9 @@ function App() {
   const [view, setView] = useState<View>(token ? "lobby" : "auth");
   const [error, setError] = useState("");
   const [theme, setTheme] = useState<Theme>(getStoredTheme());
+  const [profileOpen, setProfileOpen] = useState(false);
+  // Room code from invite link (?room=abc-defg-hij)
+  const [pendingCode, setPendingCode] = useState<string | null>(readRoomParam);
 
   useEffect(() => {
     setRole(getRole(token));
@@ -40,6 +54,14 @@ function App() {
     saveToken(newToken);
     setToken(newToken);
     setView("lobby");
+    // pendingCode is preserved so Lobby can auto-join
+  };
+
+  const onEnterRoom = (r: Room) => {
+    setRoom(r);
+    setView("room");
+    setPendingCode(null);
+    clearRoomParam();
   };
 
   const logout = () => {
@@ -48,6 +70,8 @@ function App() {
     setRoom(null);
     setView("auth");
     setError("");
+    setPendingCode(null);
+    clearRoomParam();
   };
 
   const handleThemeToggle = () => {
@@ -74,6 +98,11 @@ function App() {
               <span>
                 Logged in as {getDisplayName(token)} ({role})
               </span>
+              {role === "Member" && (
+                <button className="secondary" onClick={() => setProfileOpen(true)}>
+                  Profile
+                </button>
+              )}
               <button onClick={logout}>Logout</button>
             </>
           ) : null}
@@ -83,17 +112,19 @@ function App() {
       {!!error && <p className="error">{error}</p>}
 
       {view === "auth" && (
-        <AuthPanel onAuth={onAuthenticated} onError={setError} />
+        <AuthPanel
+          onAuth={onAuthenticated}
+          onError={setError}
+          pendingRoomCode={pendingCode}
+        />
       )}
 
       {view === "lobby" && token && (
         <Lobby
           token={token}
           role={role}
-          onEnterRoom={(r) => {
-            setRoom(r);
-            setView("room");
-          }}
+          initialRoomCode={pendingCode}
+          onEnterRoom={onEnterRoom}
           onError={setError}
         />
       )}
@@ -109,6 +140,10 @@ function App() {
           }}
           onError={setError}
         />
+      )}
+
+      {profileOpen && (
+        <ProfileModal onClose={() => setProfileOpen(false)} />
       )}
     </div>
   );

@@ -29,6 +29,7 @@ export function RoomPage({
   const [files, setFiles] = useState<SharedFile[]>([]);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState("");
+  const [copied, setCopied] = useState(false);
   const [chatConnection, setChatConnection] =
     useState<signalR.HubConnection | null>(null);
   const [callConnection, setCallConnection] =
@@ -413,9 +414,24 @@ export function RoomPage({
             </code>
           </p>
         </div>
-        <button className="secondary" onClick={onLeave}>
-          ← Leave Room
-        </button>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            className="secondary"
+            onClick={() => {
+              const url = `${window.location.origin}${window.location.pathname}?room=${room.code}`;
+              navigator.clipboard.writeText(url).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              });
+            }}
+            title="Copy invite link"
+          >
+            {copied ? "✓ Copied!" : "🔗 Share"}
+          </button>
+          <button className="secondary" onClick={onLeave}>
+            ← Leave Room
+          </button>
+        </div>
       </div>
 
       {/* Video Panel */}

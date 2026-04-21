@@ -37,15 +37,17 @@ function formatErrorMessage(error: unknown): string {
 export function AuthPanel({
   onAuth,
   onError,
+  pendingRoomCode,
 }: {
   onAuth: (token: string) => void;
   onError: (e: string) => void;
+  pendingRoomCode?: string | null;
 }) {
   const [activeTab, setActiveTab] = useState<"login" | "register" | "guest">(
-    "login",
+    pendingRoomCode ? "guest" : "login",
   );
   const [guestName, setGuestName] = useState("");
-  const [meetingCode, setMeetingCode] = useState("");
+  const [meetingCode, setMeetingCode] = useState(pendingRoomCode ?? "");
 
   async function login(formData: FormData) {
     onError("");
@@ -84,6 +86,30 @@ export function AuthPanel({
 
   return (
     <section style={{ maxWidth: "500px", margin: "0 auto" }}>
+      {pendingRoomCode && (
+        <div
+          style={{
+            padding: "1rem 1.25rem",
+            marginBottom: "1.5rem",
+            background: "rgba(59, 130, 246, 0.1)",
+            border: "1px solid rgba(59, 130, 246, 0.4)",
+            borderRadius: "0.75rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+          }}
+        >
+          <span style={{ fontSize: "1.4rem" }}>🔗</span>
+          <div>
+            <p style={{ margin: 0, fontWeight: 600, color: "var(--text-primary)" }}>
+              You've been invited to a room
+            </p>
+            <p style={{ margin: "0.2rem 0 0 0", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Sign in, create an account, or join as guest to continue.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="tabs">
         <button
           className={`tab-button ${activeTab === "login" ? "active" : ""}`}

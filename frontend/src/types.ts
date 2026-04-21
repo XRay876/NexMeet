@@ -66,3 +66,13 @@ export interface HistoryResponse {
 export interface IceServerResponse {
   iceServers: RTCIceServer[];
 }
+
+export interface UserProfile {
+  id: string;
+  login: string;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  themePreference: string;
+  createdAt: string;
+}

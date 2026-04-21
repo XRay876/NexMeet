@@ -6,17 +6,19 @@ import type { Role, Room } from "../types";
 export function Lobby({
   token,
   role,
+  initialRoomCode,
   onEnterRoom,
   onError,
 }: {
   token: string;
   role: Role;
+  initialRoomCode?: string | null;
   onEnterRoom: (room: Room) => void;
   onError: (e: string) => void;
 }) {
   const [roomName, setRoomName] = useState("");
   const [roomCode, setRoomCode] = useState(
-    getClaims(token)?.meeting_code ?? "",
+    getClaims(token)?.meeting_code ?? initialRoomCode ?? "",
   );
   const [myHistory, setMyHistory] = useState<
     Array<{ code: string; name: string; joinedAt: string; wasOwner: boolean }>
@@ -32,6 +34,13 @@ export function Lobby({
       .then(setMyHistory)
       .catch((err) => onError((err as Error).message));
   }, [role, onError]);
+
+  // Auto-join when arriving via invite link
+  useEffect(() => {
+    if (!initialRoomCode) return;
+    joinByCode(initialRoomCode).catch((err) => onError((err as Error).message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function joinByCode(code: string) {
     const roomData = await apiRequest<Room>(`/api/rooms/${code}`);
@@ -81,11 +90,16 @@ export function Lobby({
               placeholder="Give your room a name"
             />
             <button
+              disabled={!roomName.trim()}
               onClick={async () => {
+                if (!roomName.trim()) {
+                  onError("Please enter a room name.");
+                  return;
+                }
                 try {
                   const room = await apiRequest<Room>("/api/rooms", {
                     method: "POST",
-                    body: JSON.stringify({ name: roomName }),
+                    body: JSON.stringify({ name: roomName.trim() }),
                   });
                   // Join the room to record in history
                   await apiRequest(`/api/rooms/${room.code}/join`, {
@@ -113,9 +127,14 @@ export function Lobby({
             placeholder="Enter room code"
           />
           <button
+            disabled={!roomCode.trim()}
             onClick={async () => {
+              if (!roomCode.trim()) {
+                onError("Please enter a room code.");
+                return;
+              }
               try {
-                await joinByCode(roomCode);
+                await joinByCode(roomCode.trim());
               } catch (error) {
                 onError((error as Error).message);
               }
